@@ -1,48 +1,246 @@
-// app.js — Compliance Monitor Application Logic
+// app.js — Compliance Monitor (Firebase Auth + Firestore)
+
+// ============================================================
+// FIREBASE CONFIG — вставьте свои значения из Firebase Console
+// ============================================================
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyDD_IwbIN87V6VXWqpTKkEV3aEfh8ZQw8k",
+  authDomain:        "marshall-compliance-monitor.firebaseapp.com",
+  projectId:         "marshall-compliance-monitor",
+  storageBucket:     "marshall-compliance-monitor.firebasestorage.app",
+  messagingSenderId: "417137979657",
+  appId:             "1:417137979657:web:936c1706379c270c5c23d8"
+};
 
 // ============================================================
 // STATE
 // ============================================================
-let currentView = 'dashboard';
-let currentUser = '';
-let activeDept = 'all';
-let activeCrit = 'all';
-let searchQuery = '';
+let currentView  = 'dashboard';
+let currentUser  = '';       // роль/департамент (ДУП, ФЭД…)
+let currentEmail = '';       // email вошедшего пользователя
+let activeDept   = 'all';
+let activeCrit   = 'all';
+let searchQuery  = '';
 
-// Storage key
-const STORAGE_KEY = 'compliance_monitor_data';
+let store = { comments: {}, acknowledgements: {}, extraChanges: [] };
+let db    = null;
+let auth  = null;
 
-// Load or init persistent data
-function loadStorage() {
+const CONFIGURED = FIREBASE_CONFIG.apiKey !== 'YOUR_API_KEY';
+
+// ============================================================
+// FIREBASE INIT
+// ============================================================
+function initFirebase() {
+  firebase.initializeApp(FIREBASE_CONFIG);
+  db   = firebase.firestore();
+  auth = firebase.auth();
+
+  // Следим за состоянием авторизации
+  auth.onAuthStateChanged(user => {
+    if (user) {
+      // Пользователь вошёл — показываем приложение
+      currentEmail = user.email;
+      // Восстанавливаем роль из sessionStorage (если была выбрана)
+      const savedRole = sessionStorage.getItem('compliance_role') || '';
+      currentUser = savedRole;
+      showApp();
+      startFirestoreListener();
+    } else {
+      // Не авторизован — показываем экран входа
+      showLoginScreen();
+      stopFirestoreListener();
+    }
+  });
+}
+
+let firestoreUnsub = null;
+
+function startFirestoreListener() {
+  if (firestoreUnsub) return;
+  setLoading(true);
+  firestoreUnsub = db.collection('compliance').doc('store')
+    .onSnapshot(snap => {
+      if (snap.exists) {
+        const data = snap.data();
+        store.comments         = data.comments         || {};
+        store.acknowledgements = data.acknowledgements || {};
+        store.extraChanges     = data.extraChanges     || [];
+      }
+      refreshUI();
+      setLoading(false);
+    }, err => {
+      console.warn('Firestore error:', err);
+      showToast('Ошибка соединения с базой данных', 'error');
+      setLoading(false);
+    });
+}
+
+function stopFirestoreListener() {
+  if (firestoreUnsub) { firestoreUnsub(); firestoreUnsub = null; }
+}
+
+async function saveToCloud() {
+  if (!CONFIGURED || !db) { saveLocalFallback(store); return; }
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch(e) {}
-  return { comments: {}, acknowledgements: {}, extraChanges: [] };
+    await db.collection('compliance').doc('store').set({
+      comments:         store.comments,
+      acknowledgements: store.acknowledgements,
+      extraChanges:     store.extraChanges,
+      updatedAt:        firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } catch(e) {
+    console.warn('Firestore save error:', e);
+    saveLocalFallback(store);
+    showToast('Ошибка сохранения — данные записаны локально', 'error');
+  }
 }
 
-function saveStorage(data) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e) {}
+// ============================================================
+// LOGIN / LOGOUT
+// ============================================================
+async function submitLogin() {
+  const email    = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const role     = document.getElementById('login-role').value;
+  const btn      = document.getElementById('login-btn');
+  const errEl    = document.getElementById('login-error');
+
+  errEl.classList.remove('visible');
+
+  if (!email || !password) {
+    showLoginError('Введите email и пароль.');
+    return;
+  }
+  if (!role) {
+    showLoginError('Выберите ваш департамент / роль.');
+    return;
+  }
+
+  btn.disabled    = true;
+  btn.textContent = 'Вход…';
+
+  if (!CONFIGURED) {
+    // Демо-режим без Firebase: любой email/пароль
+    currentEmail = email;
+    currentUser  = role;
+    sessionStorage.setItem('compliance_role', role);
+    store = loadLocalFallback();
+    showApp();
+    refreshUI();
+    btn.disabled    = false;
+    btn.textContent = 'Войти';
+    showToast('Демо-режим: Firebase не настроен', 'error');
+    return;
+  }
+
+  try {
+    await auth.signInWithEmailAndPassword(email, password);
+    // После входа onAuthStateChanged сам вызовет showApp()
+    currentUser = role;
+    sessionStorage.setItem('compliance_role', role);
+  } catch(e) {
+    btn.disabled    = false;
+    btn.textContent = 'Войти';
+    const msgs = {
+      'auth/user-not-found':   'Пользователь с таким email не найден.',
+      'auth/wrong-password':   'Неверный пароль.',
+      'auth/invalid-email':    'Некорректный формат email.',
+      'auth/too-many-requests':'Слишком много попыток. Попробуйте позже.',
+      'auth/invalid-credential': 'Неверный email или пароль.'
+    };
+    showLoginError(msgs[e.code] || 'Ошибка входа. Проверьте данные.');
+  }
 }
 
-let store = loadStorage();
+function showLoginError(msg) {
+  const el = document.getElementById('login-error');
+  el.textContent = msg;
+  el.classList.add('visible');
+}
+
+async function logout() {
+  if (CONFIGURED && auth) {
+    await auth.signOut();
+  } else {
+    showLoginScreen();
+  }
+  sessionStorage.removeItem('compliance_role');
+  currentUser  = '';
+  currentEmail = '';
+}
+
+function showLoginScreen() {
+  document.getElementById('login-screen').classList.add('visible');
+  document.getElementById('app').style.display = 'none';
+  // Сбрасываем форму
+  const btn = document.getElementById('login-btn');
+  if (btn) { btn.disabled = false; btn.textContent = 'Войти'; }
+  const err = document.getElementById('login-error');
+  if (err) err.classList.remove('visible');
+}
+
+function showApp() {
+  document.getElementById('login-screen').classList.remove('visible');
+  document.getElementById('app').style.display = 'flex';
+
+  // Заполняем chip пользователя в шапке
+  const initials = currentEmail ? currentEmail[0].toUpperCase() : '?';
+  document.getElementById('user-chip-avatar').textContent = initials;
+  document.getElementById('user-chip-name').textContent   = currentEmail || 'Пользователь';
+  document.getElementById('user-chip-role').textContent   = currentUser  || '—';
+
+  // Инициализируем форму (если ещё не было)
+  const typeSelect = document.querySelector('[name="type"]');
+  if (typeSelect && !typeSelect._initDone) {
+    typeSelect.addEventListener('change', function() {
+      document.getElementById('draft-fields').style.display =
+        this.value === 'draft' ? 'block' : 'none';
+    });
+    typeSelect._initDone = true;
+  }
+}
 
 // ============================================================
 // INIT
 // ============================================================
 document.addEventListener('DOMContentLoaded', () => {
+  if (CONFIGURED) {
+    initFirebase();
+    // onAuthStateChanged управляет показом экранов
+  } else {
+    // Без Firebase — показываем логин в демо-режиме
+    showLoginScreen();
+  }
+});
+
+// ============================================================
+// UI HELPERS
+// ============================================================
+function refreshUI() {
   buildDeptFilters();
   renderDashboard();
   renderPublished();
   renderDraft();
   updateBadges();
+  if (currentView === 'comments') renderAllComments();
+}
 
-  // Watch admin form type change
-  document.querySelector('[name="type"]').addEventListener('change', function() {
-    document.getElementById('draft-fields').style.display =
-      this.value === 'draft' ? 'block' : 'none';
-  });
-});
+function setLoading(on) {
+  const el = document.getElementById('loading-bar');
+  if (el) el.style.display = on ? 'block' : 'none';
+}
+
+function loadLocalFallback() {
+  try {
+    const raw = localStorage.getItem('compliance_monitor_data');
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  return { comments: {}, acknowledgements: {}, extraChanges: [] };
+}
+function saveLocalFallback(data) {
+  try { localStorage.setItem('compliance_monitor_data', JSON.stringify(data)); } catch(e) {}
+}
 
 // ============================================================
 // NAVIGATION
@@ -54,7 +252,12 @@ function setView(view) {
   document.querySelectorAll('.nav-item').forEach(n => {
     n.classList.toggle('active', n.dataset.view === view);
   });
-  const titles = { dashboard: 'Обзор', published: 'Опубликованные НПА', draft: 'Проектные НПА', comments: 'Комментарии' };
+  const titles = {
+    dashboard: 'Обзор',
+    published: 'Опубликованные НПА',
+    draft:     'Проектные НПА',
+    comments:  'Комментарии'
+  };
   document.getElementById('page-title').textContent = titles[view] || '';
   if (view === 'comments') renderAllComments();
 }
@@ -64,20 +267,13 @@ function toggleSidebar() {
 }
 
 // ============================================================
-// USER
-// ============================================================
-function updateUser(val) {
-  currentUser = val;
-  if (val) showToast(`Вы вошли как: ${val}`, 'success');
-}
-
-// ============================================================
 // FILTERS
 // ============================================================
 function buildDeptFilters() {
-  const all = getAllChanges().flatMap(c => c.departments);
+  const all   = getAllChanges().flatMap(c => c.departments);
   const depts = [...new Set(all)].sort();
   const container = document.getElementById('dept-filters');
+  if (!container) return;
   container.innerHTML = `<button class="dept-btn active" data-dept="all" onclick="filterDept('all')">Все</button>`;
   depts.forEach(d => {
     container.innerHTML += `<button class="dept-btn" data-dept="${d}" onclick="filterDept('${d}')">${d}</button>`;
@@ -107,8 +303,8 @@ function filterSearch(q) {
 
 function applyFilters(changes) {
   return changes.filter(c => {
-    const deptOk = activeDept === 'all' || c.departments.some(d => d === activeDept || d === 'Все');
-    const critOk = activeCrit === 'all' || c.criticality === activeCrit;
+    const deptOk   = activeDept === 'all' || c.departments.some(d => d === activeDept || d === 'Все');
+    const critOk   = activeCrit === 'all' || c.criticality === activeCrit;
     const searchOk = !searchQuery ||
       c.title.toLowerCase().includes(searchQuery) ||
       c.summary.toLowerCase().includes(searchQuery) ||
@@ -123,33 +319,19 @@ function applyFilters(changes) {
 function getAllChanges() {
   return [...PUBLISHED_CHANGES, ...DRAFT_CHANGES, ...store.extraChanges];
 }
-
 function critClass(crit) {
-  return { 'Высокая': 'high', 'Средняя': 'medium', 'Низкая': 'low', 'Отсутствует': 'none' }[crit] || 'low';
+  return { 'Высокая':'high','Средняя':'medium','Низкая':'low','Отсутствует':'none' }[crit] || 'low';
 }
-
 function formatDate(dateStr) {
   if (!dateStr || dateStr === '—' || dateStr === '-') return '—';
   const d = new Date(dateStr);
   if (isNaN(d)) return dateStr;
-  return d.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric' });
+  return d.toLocaleDateString('ru-RU', { day:'2-digit', month:'short', year:'numeric' });
 }
-
-function getComments(id) {
-  return store.comments[id] || [];
-}
-
-function getAck(id) {
-  return store.acknowledgements[id] || {};
-}
-
-function commentCount(id) {
-  return getComments(id).length;
-}
-
-function isAcknowledgedByUser(id, user) {
-  return !!getAck(id)[user];
-}
+function getComments(id)   { return store.comments[id] || []; }
+function getAck(id)        { return store.acknowledgements[id] || {}; }
+function commentCount(id)  { return getComments(id).length; }
+function isAcknowledgedByUser(id, user) { return !!getAck(id)[user]; }
 
 function deptAckPct(dept) {
   const relevant = getAllChanges().filter(c =>
@@ -164,29 +346,18 @@ function deptAckPct(dept) {
 // DASHBOARD
 // ============================================================
 function renderDashboard() {
-  const allPub = applyFilters(PUBLISHED_CHANGES);
-  const allDft = applyFilters(DRAFT_CHANGES);
-  const all = [...allPub, ...allDft, ...applyFilters(store.extraChanges)];
+  document.getElementById('stat-total').textContent  = getAllChanges().length;
+  document.getElementById('stat-high').textContent   = PUBLISHED_CHANGES.filter(c => c.criticality === 'Высокая').length;
+  document.getElementById('stat-medium').textContent = PUBLISHED_CHANGES.filter(c => c.criticality === 'Средняя').length;
 
-  document.getElementById('stat-total').textContent = getAllChanges().length;
-  document.getElementById('stat-high').textContent =
-    PUBLISHED_CHANGES.filter(c => c.criticality === 'Высокая').length;
-  document.getElementById('stat-medium').textContent =
-    PUBLISHED_CHANGES.filter(c => c.criticality === 'Средняя').length;
-
-  // Pending acknowledgements count (published only, for all depts)
   const depts = ['ДУП','ФЭД','КД','ДЛ'];
   let pending = 0;
   PUBLISHED_CHANGES.forEach(c => {
-    c.departments.forEach(d => {
-      if (d !== 'Все' && !getAck(c.id)[d]) pending++;
-    });
+    c.departments.forEach(d => { if (d !== 'Все' && !getAck(c.id)[d]) pending++; });
   });
-  document.getElementById('stat-pending').textContent = pending;
-  document.getElementById('badge-comments').textContent =
-    Object.values(store.comments).flat().length;
+  document.getElementById('stat-pending').textContent   = pending;
+  document.getElementById('badge-comments').textContent = Object.values(store.comments).flat().length;
 
-  // Urgent list
   const urgent = PUBLISHED_CHANGES
     .filter(c => c.effectiveDate && c.effectiveDate !== '—')
     .sort((a,b) => new Date(a.effectiveDate) - new Date(b.effectiveDate))
@@ -196,11 +367,9 @@ function renderDashboard() {
       <span class="urgent-date">${formatDate(c.effectiveDate)}</span>
       <span class="urgent-text">${c.title}</span>
       <span class="urgent-dept">${c.departments[0]}</span>
-    </div>
-  `).join('') || '<div class="empty-state"><p>Нет срочных изменений</p></div>';
+    </div>`).join('') || '<div class="empty-state"><p>Нет срочных изменений</p></div>';
 
-  // Ack summary
-  const ackHtml = depts.map(d => {
+  document.getElementById('ack-summary').innerHTML = depts.map(d => {
     const pct = deptAckPct(d);
     return `<div class="ack-dept-row">
       <span class="ack-dept-name">${d}</span>
@@ -208,56 +377,45 @@ function renderDashboard() {
       <span class="ack-pct">${pct}%</span>
     </div>`;
   }).join('');
-  document.getElementById('ack-summary').innerHTML = ackHtml;
 
-  // Digest
-  const digestChanges = [...PUBLISHED_CHANGES, ...DRAFT_CHANGES].slice(0, 6);
-  document.getElementById('digest-grid').innerHTML = digestChanges.map(c => {
-    const cc = critClass(c.criticality || '');
-    return `<div class="digest-card" onclick="openChange('${c.id}')">
-      <div class="digest-cat">${c.category}</div>
-      <div class="digest-title">${c.title}</div>
-      <div class="digest-meta">
-        ${c.criticality ? `<span class="badge badge-${cc}">${c.criticality}</span>` : ''}
-        ${c.probability ? `<span class="badge badge-prob">${c.probability}</span>` : ''}
-        <span class="badge badge-dept">${c.departments[0]}</span>
-      </div>
-    </div>`;
-  }).join('');
+  document.getElementById('digest-grid').innerHTML =
+    [...PUBLISHED_CHANGES, ...DRAFT_CHANGES].slice(0,6).map(c => {
+      const cc = critClass(c.criticality || '');
+      return `<div class="digest-card" onclick="openChange('${c.id}')">
+        <div class="digest-cat">${c.category}</div>
+        <div class="digest-title">${c.title}</div>
+        <div class="digest-meta">
+          ${c.criticality ? `<span class="badge badge-${cc}">${c.criticality}</span>` : ''}
+          ${c.probability ? `<span class="badge badge-prob">${c.probability}</span>`  : ''}
+          <span class="badge badge-dept">${c.departments[0]}</span>
+        </div>
+      </div>`;
+    }).join('');
 }
 
 // ============================================================
-// PUBLISHED LIST
+// LISTS
 // ============================================================
 function renderPublished() {
   const changes = applyFilters([...PUBLISHED_CHANGES, ...store.extraChanges.filter(c => c.type === 'published')]);
-  const container = document.getElementById('list-published');
   document.getElementById('badge-published').textContent = changes.length;
-  if (!changes.length) {
-    container.innerHTML = `<div class="empty-state"><div class="icon">◈</div><p>Нет изменений по выбранным фильтрам</p></div>`;
-    return;
-  }
-  container.innerHTML = changes.map(c => changeCard(c, false)).join('');
+  document.getElementById('list-published').innerHTML = changes.length
+    ? changes.map(c => changeCard(c, false)).join('')
+    : `<div class="empty-state"><div class="icon">◈</div><p>Нет изменений по выбранным фильтрам</p></div>`;
 }
 
-// ============================================================
-// DRAFT LIST
-// ============================================================
 function renderDraft() {
   const changes = applyFilters([...DRAFT_CHANGES, ...store.extraChanges.filter(c => c.type === 'draft')]);
-  const container = document.getElementById('list-draft');
   document.getElementById('badge-draft').textContent = changes.length;
-  if (!changes.length) {
-    container.innerHTML = `<div class="empty-state"><div class="icon">◎</div><p>Нет проектных изменений</p></div>`;
-    return;
-  }
-  container.innerHTML = changes.map(c => changeCard(c, true)).join('');
+  document.getElementById('list-draft').innerHTML = changes.length
+    ? changes.map(c => changeCard(c, true)).join('')
+    : `<div class="empty-state"><div class="icon">◎</div><p>Нет проектных изменений</p></div>`;
 }
 
 function changeCard(c, isDraft) {
-  const cc = critClass(c.criticality || '');
+  const cc    = critClass(c.criticality || '');
   const acked = currentUser && isAcknowledgedByUser(c.id, currentUser);
-  const cnt = commentCount(c.id);
+  const cnt   = commentCount(c.id);
   const depts = (c.departments || []).map(d => `<span class="badge badge-dept">${d}</span>`).join('');
   return `<div class="change-card${acked ? ' acknowledged' : ''}" onclick="openChange('${c.id}')">
     <div class="change-top">
@@ -268,9 +426,9 @@ function changeCard(c, isDraft) {
       </div>
       <div class="change-badges">
         ${c.criticality ? `<span class="badge badge-${cc}">${c.criticality}</span>` : ''}
-        ${c.probability ? `<span class="badge badge-prob">${c.probability}</span>` : ''}
-        ${c.status ? `<span class="badge badge-status">${c.status}</span>` : ''}
-        ${acked ? `<span class="badge badge-ack">✓ Ознакомлен</span>` : ''}
+        ${c.probability ? `<span class="badge badge-prob">${c.probability}</span>`  : ''}
+        ${c.status      ? `<span class="badge badge-status">${c.status}</span>`     : ''}
+        ${acked         ? `<span class="badge badge-ack">✓ Ознакомлен</span>`       : ''}
       </div>
     </div>
     <div class="change-summary">${c.summary}</div>
@@ -284,23 +442,23 @@ function changeCard(c, isDraft) {
 }
 
 // ============================================================
-// MODAL — CHANGE DETAIL
+// MODAL
 // ============================================================
 function openChange(id) {
-  const c = [...PUBLISHED_CHANGES, ...DRAFT_CHANGES, ...store.extraChanges].find(x => x.id === id);
+  const c = getAllChanges().find(x => x.id === id);
   if (!c) return;
   const isDraft = DRAFT_CHANGES.some(x => x.id === id) || c.type === 'draft';
-  const cc = critClass(c.criticality || '');
-  const acked = currentUser && isAcknowledgedByUser(c.id, currentUser);
+  const cc      = critClass(c.criticality || '');
+  const acked   = currentUser && isAcknowledgedByUser(c.id, currentUser);
 
   let html = `
     <div class="modal-cat">${isDraft ? '⬡ Проектный НПА' : '◉ Опубликованный НПА'} · ${c.category}</div>
     <div class="modal-title">${c.title}</div>
     <div class="modal-badges">
-      ${c.criticality ? `<span class="badge badge-${cc}">${c.criticality}</span>` : ''}
+      ${c.criticality ? `<span class="badge badge-${cc}">${c.criticality}</span>`             : ''}
       ${c.probability ? `<span class="badge badge-prob">Вероятность: ${c.probability}</span>` : ''}
-      ${c.status ? `<span class="badge badge-status">${c.status}</span>` : ''}
-      ${acked ? `<span class="badge badge-ack">✓ Ознакомлен</span>` : ''}
+      ${c.status      ? `<span class="badge badge-status">${c.status}</span>`                 : ''}
+      ${acked         ? `<span class="badge badge-ack">✓ Ознакомлен</span>`                   : ''}
       ${(c.departments||[]).map(d=>`<span class="badge badge-dept">${d}</span>`).join('')}
     </div>
     <div class="modal-section">
@@ -313,34 +471,30 @@ function openChange(id) {
         <span>${c.normAct || '—'}</span>
       </div>
       <div class="modal-field">
-        <label>${isDraft ? 'Плановая дата вступления' : 'Дата вступления в силу'}</label>
+        <label>${isDraft ? 'Плановая дата' : 'Дата вступления в силу'}</label>
         <span>${isDraft ? (c.plannedDate||'—') : formatDate(c.effectiveDate)}</span>
       </div>
       ${isDraft ? `<div class="modal-field"><label>Стадия</label><span>${c.discussionDate||'—'}</span></div>` : ''}
       ${c.deadline ? `<div class="modal-field"><label>Срок адаптации</label><span>${c.deadline}</span></div>` : ''}
     </div>`;
 
-  if (!isDraft && c.sanctions) {
-    html += `<div class="modal-section">
+  if (!isDraft && c.sanctions) html += `
+    <div class="modal-section">
       <div class="modal-section-label">Штрафные санкции</div>
       <div class="modal-section-text">${c.sanctions}</div>
     </div>`;
-  }
-  if (c.impact) {
-    html += `<div class="modal-section">
+  if (c.impact) html += `
+    <div class="modal-section">
       <div class="modal-section-label">Влияние на компанию</div>
       <div class="modal-section-text">${c.impact.replace(/\\n/g,'<br>')}</div>
     </div>`;
-  }
-  if (c.mitigation || c.practicalValue) {
-    html += `<div class="modal-section">
+  if (c.mitigation || c.practicalValue) html += `
+    <div class="modal-section">
       <div class="modal-section-label">${isDraft ? 'Практическое значение' : 'Митигация риска'}</div>
       <div class="modal-section-text">${(c.mitigation||c.practicalValue||'').replace(/\\n/g,'<br>')}</div>
     </div>`;
-  }
 
   html += `<div class="modal-divider"></div>${renderCommentsSection(id)}`;
-
   document.getElementById('modal-content').innerHTML = html;
   document.getElementById('modal-overlay').classList.add('open');
 }
@@ -355,8 +509,8 @@ function closeModal() {
 function renderCommentsSection(id) {
   const comments = getComments(id);
   const userNote = currentUser
-    ? `Вы вошли как: <strong>${currentUser}</strong>`
-    : '<span style="color:var(--high)">Выберите вашу роль в шапке, чтобы оставить комментарий</span>';
+    ? `Вы вошли как: <strong>${currentUser}</strong> (${currentEmail})`
+    : '<span style="color:var(--high)">Роль не определена</span>';
 
   const commentsHtml = comments.length
     ? comments.map(cm => `
@@ -365,11 +519,11 @@ function renderCommentsSection(id) {
           <span class="comment-author">${cm.author}</span>
           <span class="comment-time">${cm.time}</span>
           <span class="comment-type-badge ${cm.type}">${
-            cm.type === 'ack' ? '✓ Ознакомлен' :
-            cm.type === 'issue' ? '⚠ Вопрос' : '💬 Комментарий'
+            cm.type === 'ack' ? '✓ Ознакомлен' : cm.type === 'issue' ? '⚠ Вопрос' : '💬 Комментарий'
           }</span>
         </div>
-        ${cm.text ? `<div class="comment-text">${cm.text}</div>` : ''}
+        ${cm.email ? `<div style="font-size:11px;color:var(--text-3);margin-bottom:4px">${cm.email}</div>` : ''}
+        ${cm.text  ? `<div class="comment-text">${cm.text}</div>` : ''}
       </div>`).join('')
     : '<div style="color:var(--text-3);font-size:13px;padding:8px 0">Комментариев пока нет</div>';
 
@@ -385,44 +539,46 @@ function renderCommentsSection(id) {
           <option value="issue">⚠ Вопрос / Риск</option>
         </select>
       </div>
-      <textarea class="comment-textarea" id="ctext-${id}" placeholder="Текст комментария (необязательно для 'Ознакомлен')…"></textarea>
+      <textarea class="comment-textarea" id="ctext-${id}"
+        placeholder="Текст комментария (необязательно для «Ознакомлен»)…"></textarea>
       <div style="margin-top:8px">
-        <button class="comment-submit" onclick="submitComment('${id}')">Отправить</button>
+        <button class="comment-submit" id="submit-btn-${id}" onclick="submitComment('${id}')">Отправить</button>
       </div>
     </div>
   </div>`;
 }
 
-function submitComment(id) {
+async function submitComment(id) {
   if (!currentUser) {
-    showToast('Сначала выберите вашу роль в шапке страницы', 'error');
+    showToast('Роль не определена — войдите заново', 'error');
     return;
   }
   const type = document.getElementById('ctype-' + id).value;
   const text = document.getElementById('ctext-' + id).value.trim();
 
+  const btn = document.getElementById('submit-btn-' + id);
+  if (btn) { btn.disabled = true; btn.textContent = 'Сохранение…'; }
+
   if (!store.comments[id]) store.comments[id] = [];
+  const now     = new Date();
+  const timeStr = now.toLocaleDateString('ru-RU') + ' ' +
+                  now.toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' });
 
-  const now = new Date();
-  const timeStr = now.toLocaleDateString('ru-RU') + ' ' + now.toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
+  store.comments[id].push({
+    author: currentUser,
+    email:  currentEmail,
+    type, text, time: timeStr
+  });
 
-  store.comments[id].push({ author: currentUser, type, text, time: timeStr });
-
-  // Mark acknowledgement
   if (type === 'ack') {
     if (!store.acknowledgements[id]) store.acknowledgements[id] = {};
     store.acknowledgements[id][currentUser] = true;
   }
 
-  saveStorage(store);
-  showToast(type === 'ack' ? '✓ Ознакомление зафиксировано' : 'Комментарий добавлен', 'success');
-
-  // Re-render modal
-  openChange(id);
-  updateBadges();
-  renderDashboard();
-  renderPublished();
-  renderDraft();
+  await saveToCloud();
+  showToast(type === 'ack' ? '✓ Ознакомление зафиксировано' : '✓ Комментарий добавлен', 'success');
+  // onSnapshot обновит модал автоматически если Firebase подключён
+  if (!CONFIGURED) { openChange(id); updateBadges(); renderDashboard(); renderPublished(); renderDraft(); }
 }
 
 // ============================================================
@@ -432,7 +588,7 @@ function renderAllComments() {
   const container = document.getElementById('all-comments-list');
   const all = [];
   Object.entries(store.comments).forEach(([id, cmts]) => {
-    const c = [...PUBLISHED_CHANGES, ...DRAFT_CHANGES, ...store.extraChanges].find(x => x.id === id);
+    const c = getAllChanges().find(x => x.id === id);
     cmts.forEach(cm => all.push({ ...cm, id, changeTitle: c ? c.title : id }));
   });
 
@@ -440,21 +596,18 @@ function renderAllComments() {
     container.innerHTML = `<div class="empty-state"><div class="icon">◷</div><p>Комментариев пока нет</p></div>`;
     return;
   }
-
-  // Sort newest first
-  const sorted = all.reverse();
-  container.innerHTML = sorted.map(cm => `
+  container.innerHTML = [...all].reverse().map(cm => `
     <div class="all-comment-item type-${cm.type}" onclick="openChange('${cm.id}')">
       <div class="all-comment-link">→ ${cm.changeTitle}</div>
       <div class="comment-meta">
         <span class="comment-author">${cm.author}</span>
         <span class="comment-time">${cm.time}</span>
         <span class="comment-type-badge ${cm.type}">${
-          cm.type === 'ack' ? '✓ Ознакомлен' :
-          cm.type === 'issue' ? '⚠ Вопрос' : '💬 Комментарий'
+          cm.type === 'ack' ? '✓ Ознакомлен' : cm.type === 'issue' ? '⚠ Вопрос' : '💬 Комментарий'
         }</span>
       </div>
-      ${cm.text ? `<div class="comment-text">${cm.text}</div>` : ''}
+      ${cm.email ? `<div style="font-size:11px;color:var(--text-3);margin:2px 0 4px">${cm.email}</div>` : ''}
+      ${cm.text  ? `<div class="comment-text">${cm.text}</div>` : ''}
     </div>`).join('');
 }
 
@@ -467,49 +620,37 @@ function updateBadges() {
 // ============================================================
 // ADMIN PANEL
 // ============================================================
-function openAdminPanel() {
-  document.getElementById('admin-overlay').classList.add('open');
-}
+function openAdminPanel() { document.getElementById('admin-overlay').classList.add('open'); }
+function closeAdmin()     { document.getElementById('admin-overlay').classList.remove('open'); }
 
-function closeAdmin() {
-  document.getElementById('admin-overlay').classList.remove('open');
-}
-
-function submitNewChange(e) {
+async function submitNewChange(e) {
   e.preventDefault();
-  const fd = new FormData(e.target);
+  const fd   = new FormData(e.target);
   const type = fd.get('type');
-  const id = type + '-extra-' + Date.now();
+  const id   = type + '-extra-' + Date.now();
 
-  const entry = {
-    id,
-    num: getAllChanges().length + 1,
-    type,
-    category: fd.get('category'),
-    title: fd.get('category').split('/')[0].trim() + ': ' + fd.get('summary').substring(0,60) + '…',
-    summary: fd.get('summary'),
-    normAct: fd.get('norm_act'),
+  store.extraChanges.push({
+    id, num: getAllChanges().length + 1, type,
+    category:      fd.get('category'),
+    title:         fd.get('category').split('/')[0].trim() + ': ' + fd.get('summary').substring(0,60) + '…',
+    summary:       fd.get('summary'),
+    normAct:       fd.get('norm_act'),
     effectiveDate: fd.get('effective_date'),
-    sanctions: fd.get('sanctions'),
-    criticality: fd.get('criticality'),
-    impact: fd.get('impact'),
-    mitigation: fd.get('mitigation'),
-    deadline: fd.get('deadline'),
-    departments: fd.get('departments').split(',').map(d => d.trim()).filter(Boolean),
-    status: fd.get('status'),
-    probability: fd.get('probability') || null,
-    plannedDate: fd.get('effective_date') || null
-  };
+    sanctions:     fd.get('sanctions'),
+    criticality:   fd.get('criticality'),
+    impact:        fd.get('impact'),
+    mitigation:    fd.get('mitigation'),
+    deadline:      fd.get('deadline'),
+    departments:   fd.get('departments').split(',').map(d => d.trim()).filter(Boolean),
+    status:        fd.get('status'),
+    probability:   fd.get('probability') || null,
+    plannedDate:   fd.get('effective_date') || null
+  });
 
-  store.extraChanges.push(entry);
-  saveStorage(store);
-
+  await saveToCloud();
   closeAdmin();
   e.target.reset();
-  buildDeptFilters();
-  renderPublished();
-  renderDraft();
-  renderDashboard();
+  if (!CONFIGURED) { buildDeptFilters(); renderPublished(); renderDraft(); renderDashboard(); }
   showToast('✓ Изменение добавлено', 'success');
 }
 
@@ -522,37 +663,30 @@ function exportReport() {
   lines.push(`Дата формирования: ${new Date().toLocaleDateString('ru-RU')}`);
   lines.push('='.repeat(70));
   lines.push('\nI. ОПУБЛИКОВАННЫЕ НПА\n');
-
   PUBLISHED_CHANGES.forEach(c => {
     lines.push(`#${c.num} ${c.title}`);
-    lines.push(`Категория: ${c.category}`);
-    lines.push(`Критичность: ${c.criticality}`);
+    lines.push(`Категория: ${c.category} | Критичность: ${c.criticality}`);
     lines.push(`Нормативный акт: ${c.normAct}`);
     lines.push(`Дата вступления: ${formatDate(c.effectiveDate)}`);
-    lines.push(`Департаменты: ${c.departments.join(', ')}`);
-    lines.push(`Статус: ${c.status}`);
+    lines.push(`Департаменты: ${c.departments.join(', ')} | Статус: ${c.status}`);
     const cmts = getComments(c.id);
     if (cmts.length) {
       lines.push(`Комментарии (${cmts.length}):`);
-      cmts.forEach(cm => lines.push(`  [${cm.author}] ${cm.time}: ${cm.text || '(Ознакомлен)'}`));
+      cmts.forEach(cm => lines.push(`  [${cm.author} / ${cm.email||'—'}] ${cm.time}: ${cm.text || '(Ознакомлен)'}`));
     }
     lines.push('-'.repeat(50));
   });
-
   lines.push('\nII. ПРОЕКТНЫЕ НПА\n');
   DRAFT_CHANGES.forEach(c => {
     lines.push(`#${c.num} ${c.title}`);
-    lines.push(`Категория: ${c.category}`);
-    lines.push(`Вероятность: ${c.probability}`);
+    lines.push(`Вероятность: ${c.probability} | Плановая дата: ${c.plannedDate}`);
     lines.push(`Нормативный акт: ${c.normAct}`);
-    lines.push(`Плановая дата: ${c.plannedDate}`);
     lines.push(`Департаменты: ${c.departments.join(', ')}`);
     lines.push('-'.repeat(50));
   });
-
   const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
   a.href = url;
   a.download = `Compliance_Report_${QUARTER.replace(' ','_')}.txt`;
   a.click();
@@ -566,6 +700,6 @@ function exportReport() {
 function showToast(msg, type = '') {
   const t = document.getElementById('toast');
   t.textContent = msg;
-  t.className = 'toast show ' + type;
-  setTimeout(() => t.classList.remove('show'), 3000);
+  t.className   = 'toast show ' + type;
+  setTimeout(() => t.classList.remove('show'), 3500);
 }

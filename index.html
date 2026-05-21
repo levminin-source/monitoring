@@ -3,13 +3,257 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Compliance Monitor — Мониторинг законодательства</title>
+  <title>Compliance Monitor — Marshall</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <style>
+    #loading-bar {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #C8102E, #e8759a, #C8102E);
+      background-size: 200% 100%;
+      animation: loadingSlide 1.2s linear infinite;
+      z-index: 9999;
+    }
+    @keyframes loadingSlide {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* ── LOGIN SCREEN ── */
+    #login-screen {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      z-index: 500;
+      align-items: center;
+      justify-content: center;
+    }
+    #login-screen.visible { display: flex; }
+
+    .login-card {
+      background: var(--bg-2);
+      border: 1px solid var(--border-hover);
+      border-top: 3px solid var(--accent);
+      border-radius: 12px;
+      padding: 40px 44px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.6);
+    }
+    .login-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+    .login-brand-icon {
+      width: 42px; height: 42px;
+      background: var(--accent);
+      border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; font-weight: 900; color: #fff;
+      font-family: var(--font);
+    }
+    .login-brand-text { display: flex; flex-direction: column; line-height: 1.2; }
+    .login-brand-name { font-size: 16px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+    .login-brand-sub  { font-size: 10px; color: var(--text-3); letter-spacing: 0.1em; text-transform: uppercase; }
+
+    .login-title {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      margin-bottom: 6px;
+    }
+    .login-subtitle {
+      font-size: 13px;
+      color: var(--text-2);
+      margin-bottom: 28px;
+      line-height: 1.5;
+    }
+
+    .login-field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      margin-bottom: 14px;
+    }
+    .login-field label {
+      font-size: 10px;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      font-weight: 700;
+    }
+    .login-field input {
+      background: var(--bg-3);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 14px;
+      padding: 11px 14px;
+      outline: none;
+      transition: border 0.15s;
+      width: 100%;
+    }
+    .login-field input:focus { border-color: var(--accent); }
+    .login-field input::placeholder { color: var(--text-3); }
+
+    .login-role-field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      margin-bottom: 24px;
+    }
+    .login-role-field label {
+      font-size: 10px;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      font-weight: 700;
+    }
+    .login-role-field select {
+      background: var(--bg-3);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 14px;
+      padding: 11px 14px;
+      outline: none;
+      transition: border 0.15s;
+      width: 100%;
+      cursor: pointer;
+    }
+    .login-role-field select:focus { border-color: var(--accent); }
+
+    .login-btn {
+      width: 100%;
+      padding: 13px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-family: var(--font);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.15s;
+      margin-bottom: 12px;
+    }
+    .login-btn:hover { background: var(--accent-light); transform: translateY(-1px); }
+    .login-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    .login-error {
+      display: none;
+      background: var(--high-bg);
+      border: 1px solid rgba(232,41,74,0.3);
+      border-radius: 6px;
+      color: var(--high);
+      font-size: 12px;
+      padding: 10px 12px;
+      margin-top: 10px;
+      line-height: 1.5;
+    }
+    .login-error.visible { display: block; }
+
+    .login-footer {
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      font-size: 11px;
+      color: var(--text-3);
+      text-align: center;
+      line-height: 1.6;
+    }
+
+    /* ── USER CHIP in top bar ── */
+    .user-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg-3);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .user-chip-avatar {
+      width: 22px; height: 22px;
+      background: var(--accent);
+      border-radius: 3px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 800; color: #fff;
+      flex-shrink: 0;
+    }
+    .user-chip-name { color: var(--text); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .user-chip-role { color: var(--text-3); font-size: 11px; }
+    .user-chip-logout {
+      background: none; border: none; color: var(--text-3);
+      cursor: pointer; font-size: 14px; padding: 0 0 0 4px;
+      transition: color 0.15s; line-height: 1;
+    }
+    .user-chip-logout:hover { color: var(--high); }
+  </style>
 </head>
 <body>
-  <div id="app">
+  <div id="loading-bar"></div>
+
+  <!-- LOGIN SCREEN -->
+  <div id="login-screen" class="visible">
+    <div class="login-card">
+      <div class="login-brand">
+        <div class="login-brand-icon">МЗ</div>
+        <div class="login-brand-text">
+          <span class="login-brand-name">Marshall</span>
+          <span class="login-brand-sub">Compliance Monitor</span>
+        </div>
+      </div>
+      <div class="login-title">Вход в систему</div>
+      <div class="login-subtitle">Доступ только для сотрудников компании.<br>Введите ваши учётные данные.</div>
+
+      <div class="login-field">
+        <label>Email</label>
+        <input type="email" id="login-email" placeholder="ivanov@marshall.com" autocomplete="email">
+      </div>
+      <div class="login-field">
+        <label>Пароль</label>
+        <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password"
+               onkeydown="if(event.key==='Enter') submitLogin()">
+      </div>
+      <div class="login-role-field">
+        <label>Ваш департамент / роль</label>
+        <select id="login-role">
+          <option value="">— Выберите роль —</option>
+          <option value="ДУП">ДУП</option>
+          <option value="ФЭД">ФЭД</option>
+          <option value="КД">КД</option>
+          <option value="ДЛ">ДЛ</option>
+          <option value="Юрист">Юрист</option>
+          <option value="Руководство">Руководство</option>
+        </select>
+      </div>
+
+      <button class="login-btn" id="login-btn" onclick="submitLogin()">Войти</button>
+      <div class="login-error" id="login-error"></div>
+
+      <div class="login-footer">
+        Нет доступа? Обратитесь к юридическому департаменту.<br>
+        Аккаунты создаются администратором в Firebase Console.
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN APP (hidden until logged in) -->
+  <div id="app" style="display:none">
     <!-- SIDEBAR -->
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-brand">
@@ -48,10 +292,10 @@
       <div class="sidebar-section-label">Критичность</div>
       <div class="crit-filters">
         <button class="crit-btn all active" onclick="filterCrit('all')">Все</button>
-        <button class="crit-btn high" onclick="filterCrit('Высокая')">Высокая</button>
+        <button class="crit-btn high"   onclick="filterCrit('Высокая')">Высокая</button>
         <button class="crit-btn medium" onclick="filterCrit('Средняя')">Средняя</button>
-        <button class="crit-btn low" onclick="filterCrit('Низкая')">Низкая</button>
-        <button class="crit-btn none" onclick="filterCrit('Отсутствует')">Нет риска</button>
+        <button class="crit-btn low"    onclick="filterCrit('Низкая')">Низкая</button>
+        <button class="crit-btn none"   onclick="filterCrit('Отсутствует')">Нет риска</button>
       </div>
 
       <div class="sidebar-bottom">
@@ -73,16 +317,14 @@
             <input type="text" id="search-input" placeholder="Поиск по изменениям…" oninput="filterSearch(this.value)">
             <span class="search-icon">⌕</span>
           </div>
-          <div class="user-select-wrapper">
-            <select id="current-user" onchange="updateUser(this.value)">
-              <option value="">— Выберите роль —</option>
-              <option value="ДУП">ДУП</option>
-              <option value="ФЭД">ФЭД</option>
-              <option value="КД">КД</option>
-              <option value="ДЛ">ДЛ</option>
-              <option value="Юрист">Юрист</option>
-              <option value="Руководство">Руководство</option>
-            </select>
+          <!-- User chip — заполняется после входа -->
+          <div class="user-chip" id="user-chip">
+            <div class="user-chip-avatar" id="user-chip-avatar">?</div>
+            <div>
+              <div class="user-chip-name" id="user-chip-name">—</div>
+              <div class="user-chip-role" id="user-chip-role">—</div>
+            </div>
+            <button class="user-chip-logout" onclick="logout()" title="Выйти">⏻</button>
           </div>
         </div>
       </header>
@@ -254,6 +496,9 @@
 
   <div id="toast" class="toast"></div>
 
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="data.js"></script>
   <script src="app.js"></script>
 </body>

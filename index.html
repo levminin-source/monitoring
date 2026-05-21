@@ -1,518 +1,260 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Мониторинг законодательства Q1 2026</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; background: #f4f5f7; color: #1a1a2e; font-size: 14px; }
-
-  /* Header */
-  .header { background: #2F5496; color: #fff; padding: 18px 28px; display: flex; align-items: center; justify-content: space-between; }
-  .header h1 { font-size: 17px; font-weight: 600; letter-spacing: 0.01em; }
-  .header .meta { font-size: 12px; opacity: 0.75; margin-top: 2px; }
-
-  /* Tabs */
-  .tabs { background: #fff; border-bottom: 1px solid #dde1ea; padding: 0 28px; display: flex; gap: 4px; }
-  .tab { padding: 12px 18px; font-size: 13px; font-weight: 500; cursor: pointer; border-bottom: 3px solid transparent; color: #6b7280; white-space: nowrap; }
-  .tab.active { border-bottom-color: #2F5496; color: #2F5496; }
-  .tab:hover:not(.active) { color: #374151; }
-
-  /* Toolbar */
-  .toolbar { padding: 14px 28px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; background: #fff; border-bottom: 1px solid #eaecf0; }
-  .toolbar input[type=text] { border: 1px solid #d1d5db; border-radius: 6px; padding: 7px 12px; font-size: 13px; width: 260px; outline: none; background: #f9fafb; }
-  .toolbar input[type=text]:focus { border-color: #2F5496; background: #fff; }
-  .filter-group { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-  .filter-label { font-size: 12px; color: #6b7280; margin-right: 2px; }
-  .pill { padding: 5px 12px; border-radius: 20px; border: 1px solid #d1d5db; font-size: 12px; cursor: pointer; background: #fff; color: #374151; white-space: nowrap; }
-  .pill.active { background: #2F5496; color: #fff; border-color: #2F5496; }
-  .pill.crit-high.active  { background: #D5335D; border-color: #D5335D; }
-  .pill.crit-med.active   { background: #140F39; border-color: #140F39; }
-  .pill.crit-low.active   { background: #3B5B95; border-color: #3B5B95; }
-  .count-badge { margin-left: auto; font-size: 12px; color: #6b7280; }
-
-  /* Main content */
-  .content { padding: 20px 28px; }
-
-  /* Cards */
-  .cards { display: flex; flex-direction: column; gap: 10px; }
-  .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; }
-  .card-header { display: flex; align-items: flex-start; gap: 12px; padding: 14px 18px 12px; cursor: pointer; }
-  .card-num { min-width: 28px; font-weight: 700; color: #374151; font-size: 13px; padding-top: 1px; }
-  .card-title-block { flex: 1; }
-  .card-category { font-size: 11px; color: #6b7280; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.04em; }
-  .card-title { font-size: 13px; font-weight: 600; color: #111827; line-height: 1.4; }
-  .card-meta { display: flex; gap: 8px; align-items: center; margin-top: 7px; flex-wrap: wrap; }
-  .badge-crit { font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 12px; color: #fff; }
-  .badge-crit.high { background: #D5335D; }
-  .badge-crit.med  { background: #140F39; }
-  .badge-crit.low  { background: #3B5B95; }
-  .badge-dept { font-size: 11px; background: #eff6ff; color: #1d4ed8; padding: 2px 8px; border-radius: 12px; }
-  .badge-date { font-size: 11px; background: #f3f4f6; color: #6b7280; padding: 2px 8px; border-radius: 12px; }
-  .badge-status { font-size: 11px; background: #ecfdf5; color: #065f46; padding: 2px 8px; border-radius: 12px; }
-  .card-chevron { font-size: 18px; color: #9ca3af; transition: transform 0.2s; flex-shrink: 0; margin-top: 2px; }
-  .card.open .card-chevron { transform: rotate(180deg); }
-
-  /* Card body */
-  .card-body { display: none; padding: 0 18px 18px 58px; border-top: 1px solid #f3f4f6; }
-  .card.open .card-body { display: block; }
-  .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 24px; margin-top: 14px; }
-  .detail-item label { font-size: 11px; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; display: block; margin-bottom: 4px; }
-  .detail-item p { font-size: 13px; color: #374151; line-height: 1.55; white-space: pre-wrap; }
-  .detail-item.full { grid-column: 1 / -1; }
-  .detail-act { font-size: 12px; color: #2563eb; margin-top: 6px; font-style: italic; white-space: pre-wrap; }
-
-  /* Sheet 2 - project changes */
-  .proj-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; }
-  .proj-card-header { padding: 14px 18px; cursor: pointer; display: flex; align-items: flex-start; gap: 12px; }
-  .prob-badge { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 12px; background: #fef3c7; color: #92400e; white-space: nowrap; flex-shrink: 0; }
-  .prob-badge.high { background: #dcfce7; color: #14532d; }
-  .prob-badge.med  { background: #fef3c7; color: #92400e; }
-  .prob-badge.low  { background: #f3f4f6; color: #4b5563; }
-
-  /* Empty state */
-  .empty { text-align: center; padding: 60px 20px; color: #9ca3af; }
-  .empty svg { margin-bottom: 12px; }
-
-  /* Stats bar */
-  .stats-bar { display: flex; gap: 16px; margin-bottom: 18px; flex-wrap: wrap; }
-  .stat { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 16px; text-align: center; min-width: 90px; }
-  .stat-val { font-size: 22px; font-weight: 700; color: #1a1a2e; }
-  .stat-label { font-size: 11px; color: #6b7280; margin-top: 2px; }
-  .stat.high .stat-val { color: #D5335D; }
-  .stat.med  .stat-val { color: #140F39; }
-  .stat.low  .stat-val { color: #3B5B95; }
-
-  @media (max-width: 600px) {
-    .detail-grid { grid-template-columns: 1fr; }
-    .toolbar { flex-direction: column; align-items: flex-start; }
-    .toolbar input[type=text] { width: 100%; }
-    .content { padding: 14px 14px; }
-    .card-body { padding-left: 18px; }
-    .header, .tabs, .toolbar { padding-left: 14px; padding-right: 14px; }
-  }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Compliance Monitor — Мониторинг законодательства</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Onest:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <div id="app">
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-icon">⚖</div>
+        <div class="brand-text">
+          <span class="brand-name">Compliance</span>
+          <span class="brand-sub">Monitor</span>
+        </div>
+      </div>
 
-<div class="header">
-  <div>
-    <div class="h1">Мониторинг законодательства</div>
-    <div class="meta">Корона Авто &nbsp;|&nbsp; 1 квартал 2026 года &nbsp;|&nbsp; Источник: КонсультантПлюс</div>
-  </div>
-</div>
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-view="dashboard" onclick="setView('dashboard')">
+          <span class="nav-icon">◈</span> Обзор
+        </button>
+        <button class="nav-item" data-view="published" onclick="setView('published')">
+          <span class="nav-icon">◉</span> Опубликованные
+          <span class="nav-badge" id="badge-published">5</span>
+        </button>
+        <button class="nav-item" data-view="draft" onclick="setView('draft')">
+          <span class="nav-icon">◎</span> Проектные
+          <span class="nav-badge" id="badge-draft">4</span>
+        </button>
+        <button class="nav-item" data-view="comments" onclick="setView('comments')">
+          <span class="nav-icon">◷</span> Комментарии
+          <span class="nav-badge pending" id="badge-comments">0</span>
+        </button>
+      </nav>
 
-<div class="tabs">
-  <div class="tab active" onclick="switchTab('published')">I. Опубликованные изменения</div>
-  <div class="tab" onclick="switchTab('projects')">II. Проектные изменения</div>
-</div>
+      <div class="sidebar-divider"></div>
 
-<div id="tab-published">
-  <div class="toolbar">
-    <input type="text" id="search" placeholder="🔍  Поиск по теме, категории, НПА..." oninput="filterCards()">
-    <div class="filter-group">
-      <span class="filter-label">Критичность:</span>
-      <span class="pill crit-high" onclick="toggleFilter('high')">Высокая</span>
-      <span class="pill crit-med"  onclick="toggleFilter('med')">Средняя</span>
-      <span class="pill crit-low"  onclick="toggleFilter('low')">Низкая</span>
-    </div>
-    <span class="count-badge" id="count-badge"></span>
-  </div>
-  <div class="content">
-    <div class="stats-bar">
-      <div class="stat high"><div class="stat-val" id="cnt-high">0</div><div class="stat-label">Высокая</div></div>
-      <div class="stat med" ><div class="stat-val" id="cnt-med">0</div><div class="stat-label">Средняя</div></div>
-      <div class="stat low" ><div class="stat-val" id="cnt-low">0</div><div class="stat-label">Низкая</div></div>
-    </div>
-    <div class="cards" id="cards-container"></div>
-  </div>
-</div>
+      <div class="sidebar-section-label">Департаменты</div>
+      <div class="dept-filters" id="dept-filters"></div>
 
-<div id="tab-projects" style="display:none">
-  <div class="toolbar">
-    <input type="text" id="search-proj" placeholder="🔍  Поиск по проектным изменениям..." oninput="filterProjects()">
-    <span class="count-badge" id="count-proj-badge"></span>
-  </div>
-  <div class="content">
-    <div class="cards" id="proj-container"></div>
-  </div>
-</div>
+      <div class="sidebar-divider"></div>
 
-<script>
-const DATA = [
-  {
-    num: "1",
-    category: "Макроэкономическое регулирование",
-    title: "Снижение ключевой ставки ЦБ до 15,00% годовых",
-    change: "Банк России снизил ключевую ставку на 50 б.п., до 15,00% годовых.\n\nЭкономика приближается к траектории сбалансированного роста. Устойчивые показатели текущего роста цен остаются в диапазоне 4–5% в пересчёте на год.\n\nСледующее заседание: 24 апреля 2026 года.",
-    act: "Информационное сообщение Банка России от 20.03.2026\n«Банк России принял решение снизить ключевую ставку на 50 б.п., до 15,00% годовых»",
-    date: "20.03.2026",
-    penalties: "—",
-    crit: "med",
-    critLabel: "Средняя",
-    impact: "Снижение ставки ведёт к удешевлению кредитования для группы (займы, овердрафты, факторинг) и снижению доходности депозитов. Возможно улучшение условий рефинансирования.",
-    mitigation: "Мониторить решения ЦБ; переоценить условия по кредитным линиям; адаптировать финансовые планы с учётом динамики ставок.",
-    deadline: "Уже в силе",
-    dept: "ФЭД, КД",
-    status: "Для информации"
-  },
-  {
-    num: "2",
-    category: "Макроэкономическое регулирование",
-    title: "Снижение ключевой ставки ЦБ до 14,50% годовых",
-    change: "Банк России вновь снизил ключевую ставку на 50 б.п., до 14,50% годовых (апрельское заседание).\n\nДенежно-кредитные условия немного смягчились, но остаются жёсткими. Кредитная активность сдержанная.\n\nСледующее заседание: 19 июня 2026 года.",
-    act: "Информационное сообщение Банка России от 24.04.2026\n«Банк России принял решение снизить ключевую ставку на 50 б.п., до 14,50% годовых»",
-    date: "24.04.2026",
-    penalties: "—",
-    crit: "med",
-    critLabel: "Средняя",
-    impact: "Продолжение цикла снижения ставок. Улучшаются возможности рефинансирования действующих кредитных линий. Снижается доходность депозитов.",
-    mitigation: "При перезаключении кредитных договоров ориентироваться на новый уровень ставок; пересматривать условия по депозитам.",
-    deadline: "Уже в силе",
-    dept: "ФЭД, КД",
-    status: "Для информации"
-  },
-  {
-    num: "3",
-    category: "Налоговое регулирование / НДС",
-    title: "ФЗ-104: адаптация бизнеса к НДС-изменениям 2026 года",
-    change: "Принят закон о плавной адаптации бизнеса к НДС:\n• Освобождение от НДС услуг общепита для плательщиков на УСН/ПСН до конца 2026 г.\n• Особенности перехода ИП на УСН при превышении 20 млн руб. дохода в 2025 г.\n• Смягчение порядка определения доходов ИП за 2025 г. для целей освобождения от НДС.\n• Уточнён механизм вычетов по НДС для экспортёров сырьевых товаров.",
-    act: "Федеральный закон от 25.04.2026 № 104-ФЗ\n«О внесении изменений в часть вторую Налогового кодекса Российской Федерации»",
-    date: "25.04.2026",
-    penalties: "—",
-    crit: "med",
-    critLabel: "Средняя",
-    impact: "Льгота по НДС для контрагентов-общепита на УСН продлена. Снижает риск доначислений НДС у мелких поставщиков в переходный период.",
-    mitigation: "Проверить контрагентов на УСН, оказывающих услуги общепита; учесть при расчёте стоимости услуг.",
-    deadline: "Уже в силе",
-    dept: "ФЭД, КД",
-    status: "Учесть при планировании закупок"
-  },
-  {
-    num: "4",
-    category: "Таможенное регулирование / НДС / Импорт",
-    title: "Эксперимент по отсрочке уплаты таможенного НДС до 3 месяцев",
-    change: "До 30 июня 2027 г. проводится эксперимент по отсрочке уплаты НДС при ввозе товаров.\n\n• Отсрочка — до 3 месяцев с даты выпуска товаров, без начисления процентов.\n• Участники: российские юрлица — уполномоченные экономические операторы и/или системообразующие организации.\n• Заявление подаётся в ФТС в электронном виде не позднее 15 июня 2027 г.",
-    act: "Указ Президента РФ от 20.04.2026 № 263\n«О дополнительных мерах по повышению устойчивости развития российской экономики»",
-    date: "20.04.2026",
-    penalties: "—",
-    crit: "med",
-    critLabel: "Средняя",
-    impact: "Компании-участники могут улучшить денежный поток: беспроцентная отсрочка таможенного НДС на 3 месяца высвобождает оборотные средства.",
-    mitigation: "Проверить статус компаний группы (УЭО / системообразующая); при наличии оснований подать заявление в ФТС; учесть при кассовом планировании.",
-    deadline: "Заявки до 15.06.2027",
-    dept: "КД, ДЛ, ФЭД",
-    status: "Учесть в работе"
-  },
-  {
-    num: "5",
-    category: "Трудовое законодательство",
-    title: "Лимит сверхурочной работы увеличен до 240 часов в год",
-    change: "Госдума приняла закон, увеличивающий предельный лимит сверхурочной работы:\n• До 240 ч/год при наличии коллективного договора и/или отраслевого соглашения.\n• Свыше 120 ч/год — только с письменного согласия работника.\n• Оплата: до 120 ч/год — первые 2 часа не менее 1,5×, далее не менее 2×; начиная со 121-го часа — не менее 2× за каждый час.\n• Право выбрать допотдых вместо повышенной оплаты.\n• При сверхурочной свыше 120 ч — 1 день освобождения в год для диспансеризации.",
-    act: "Проект ФЗ № 1103297-8 (принят Госдумой, направлен в СФ)\n«О внесении изменений в Трудовой кодекс РФ»",
-    date: "После опубликования",
-    penalties: "—",
-    crit: "med",
-    critLabel: "Средняя",
-    impact: "Расширяются возможности привлечения работников в периоды пиковой нагрузки. При этом возрастают затраты на оплату труда. Требуется актуализация коллективных договоров и ЛНА.",
-    mitigation: "Оценить необходимость увеличения лимита; при необходимости включить в коллективный договор; актуализировать порядок оплаты в ЛНА.",
-    deadline: "После вступления закона в силу",
-    dept: "ДУП, ФЭД",
-    status: "Учесть в работе"
-  },
-  {
-    num: "6",
-    category: "Таможенное регулирование / Логистика",
-    title: "Тарифы РЖД на перевозки в Латвию / Эстонию / Финляндию ×2",
-    change: "С 1 июня 2026 года вводится дополнительный коэффициент 2,0 к тарифам РЖД на перевозки грузов в направлении сухопутных пограничных переходов с Латвией, Эстонией и Финляндией (кроме станций Калининградской ж.д. и Литвы), а также с Республикой Беларусь при дальнейшем следовании в Латвию или Эстонию.",
-    act: "Приказ ФАС России от 24.04.2026 № 306/26\n(изменения в Тарифное руководство № 1 РЖД)\nЗарегистрирован в Минюсте России 18.05.2026 № 86488",
-    date: "01.06.2026",
-    penalties: "—",
-    crit: "med",
-    critLabel: "Средняя",
-    impact: "Удвоение тарифов на грузоперевозки через указанные погранпереходы существенно увеличивает логистические расходы. Влияет на себестоимость экспортных и транзитных поставок.",
-    mitigation: "Ревизия маршрутов поставок; переориентация на альтернативные маршруты; пересмотр условий экспортных контрактов с учётом роста затрат.",
-    deadline: "До 01.06.2026",
-    dept: "ДЛ, КД, ФЭД",
-    status: "Учесть в работе"
-  },
-  {
-    num: "7",
-    category: "Налоговое регулирование / Маркировка",
-    title: "Обновлены правила маркировки отдельных видов товаров",
-    change: "Внесены изменения в правила маркировки обуви, товаров лёгкой промышленности, парфюмерии, шин, БАДов:\n• Введены новые понятия: «критерии оценки фактического наличия производства», «оценка производителей».\n• Расширен перечень оснований для отказа в выдаче кодов маркировки.\n• Определён порядок проведения оценки производителей оператором ИС мониторинга.\n\nВступление в силу: через 60 дней после публикации (для большинства норм).",
-    act: "Постановление Правительства РФ от 07.05.2026 № 526\n«О внесении изменений в некоторые акты Правительства РФ по вопросам оценки производителей товаров, подлежащих обязательной маркировке»",
-    date: "Через 60 дней после публикации",
-    penalties: "—",
-    crit: "low",
-    critLabel: "Низкая",
-    impact: "Для компаний, производящих или ввозящих маркируемые товары (обувь, шины и др.) — необходимо учитывать новые основания для отказа в выдаче кодов и готовность к оценке производства.",
-    mitigation: "Уточнить в ЧЗ актуальный порядок получения кодов; при получении запросов на посещение производства — реагировать в сроки.",
-    deadline: "В течение 60 дней после публикации",
-    dept: "КД, ФЭД",
-    status: "Для информации"
-  },
-  {
-    num: "8",
-    category: "Налоговое и статистическое регулирование",
-    title: "Новая форма декларации по водному налогу",
-    change: "Утверждена новая форма налоговой декларации по водному налогу. В декларацию добавлены поля для значений коэффициентов, необходимых для определения ставки.\n\nПо новой форме можно представлять отчётность начиная с II квартала 2026 года.",
-    act: "Приказ ФНС России от 30.04.2026\nИнформация ФНС: «Утверждена налоговая декларация по водному налогу»",
-    date: "С отчётности за II кв. 2026",
-    penalties: "—",
-    crit: "low",
-    critLabel: "Низкая",
-    impact: "Для компаний группы — плательщиков водного налога — необходимо использовать обновлённую форму декларации при отчётности за II квартал 2026 года.",
-    mitigation: "Обновить формы в учётных системах; уточнить у бухгалтерии перечень плательщиков водного налога в группе.",
-    deadline: "До отчётности за II кв. 2026",
-    dept: "ФЭД",
-    status: "Для информации"
-  },
-  {
-    num: "9",
-    category: "Налоговое регулирование / Туристический налог",
-    title: "Разъяснение ФНС: санатории признаются плательщиками туристического налога",
-    change: "ФНС разъяснила: санаторно-курортные организации, оказывающие услуги временного проживания (в т.ч. ведомственные), признаются включёнными в реестр классифицированных средств размещения и являются плательщиками туристического налога.\n\nПозиция согласована с Минфином России.",
-    act: "Письмо ФНС России от 07.05.2026 № СД-36-3/3752@\n«О направлении разъяснений по туристическому налогу»",
-    date: "Применяется с 2025 г.",
-    penalties: "—",
-    crit: "low",
-    critLabel: "Низкая",
-    impact: "Если в группе есть санатории или корпоративные объекты размещения — они могут быть признаны плательщиками туристического налога. Необходима проверка.",
-    mitigation: "Проверить наличие в группе средств размещения, включённых в реестр; при необходимости встать на учёт как плательщик туристического налога.",
-    deadline: "—",
-    dept: "ФЭД",
-    status: "Для информации"
-  },
-  {
-    num: "10",
-    category: "Исполнительное производство",
-    title: "Законопроект: исполнительский сбор увеличивается с 7% до 12%",
-    change: "В 1-м чтении принят законопроект об увеличении исполнительского сбора:\n• С 7% до 12% от взыскиваемой суммы.\n• Минимум по имущественным требованиям для организаций: с 10 000 до 20 000 руб.\n• Минимум по неимущественным требованиям для организаций: с 50 000 до 100 000 руб.\n• Сбор удерживается одновременно с основным долгом (пропорционально каждому платежу).\n\nСостояние: 1-е чтение принято 20.11.2025. Вероятность принятия: 80–85%.",
-    act: "Проект ФЗ № 1044616-8\n«О внесении изменений в ФЗ № 229-ФЗ «Об исполнительном производстве»\n(1-е чтение принято 20.11.2025)",
-    date: "Через 10 к.д. после опубликования",
-    penalties: "—",
-    crit: "med",
-    critLabel: "Средняя",
-    impact: "При наличии исполнительных производств финансовая нагрузка при просрочке возрастёт. Как взыскателю — часть взысканных сумм (12%) будет уходить государству.",
-    mitigation: "Мониторить прохождение закона; при активных исполнительных производствах учесть возросшую нагрузку; стремиться к своевременному исполнению решений суда.",
-    deadline: "Мониторинг",
-    dept: "ФЭД, КД",
-    status: "Учесть в работе"
-  }
-];
+      <div class="sidebar-section-label">Критичность</div>
+      <div class="crit-filters">
+        <button class="crit-btn all active" onclick="filterCrit('all')">Все</button>
+        <button class="crit-btn high" onclick="filterCrit('Высокая')">Высокая</button>
+        <button class="crit-btn medium" onclick="filterCrit('Средняя')">Средняя</button>
+        <button class="crit-btn low" onclick="filterCrit('Низкая')">Низкая</button>
+        <button class="crit-btn none" onclick="filterCrit('Отсутствует')">Нет риска</button>
+      </div>
 
-const PROJECTS = [
-  {
-    category: "Исполнительное производство",
-    title: "Увеличение исполнительского сбора с 7% до 12%",
-    change: "Изменить размер исполнительского сбора с 7% до 12% от взыскиваемой суммы. Повысить в 2 раза минимальные размеры: по имущественным требованиям для организаций — с 10 000 до 20 000 руб., по неимущественным — с 50 000 до 100 000 руб.\n\nСбор будет удерживаться одновременно с основным долгом пропорционально каждому поступающему платежу.",
-    act: "Проект ФЗ № 1044616-8 «О внесении изменений в ФЗ № 229-ФЗ «Об исполнительном производстве»",
-    discDate: "20.11.2025 (1-е чтение принято)",
-    prob: "80–85%",
-    probLevel: "high",
-    planDate: "Через 10 к.д. после опубликования",
-    value: "При наличии исполнительных производств в отношении компаний группы финансовая нагрузка при просрочке исполнения требований суда возрастёт. Как взыскателю следует учитывать, что 12% от взысканных сумм будет уходить государству.",
-    dept: "ФЭД",
-    comments: "Требует мониторинга"
-  },
-  {
-    category: "Трудовое законодательство",
-    title: "Лимит сверхурочной работы — до 240 часов в год",
-    change: "Увеличение предельного лимита сверхурочной работы до 240 часов в год (вместо 120 ч) при наличии коллективного договора. Расширение возможности привлечения работников к сверхурочной работе с установлением новых гарантий (письменное согласие, повышенная оплата начиная со 121-го часа, право на дополнительный отдых).",
-    act: "Проект ФЗ № 1103297-8 (принят Госдумой, направлен в СФ)",
-    discDate: "Принят Госдумой (I кв. 2026), на рассмотрении в СФ",
-    prob: "90–95%",
-    probLevel: "high",
-    planDate: "После официального опубликования",
-    value: "Расширяется возможность использования сверхурочной работы в периоды пиковой нагрузки. Требуется актуализация коллективных договоров и ЛНА по оплате труда.",
-    dept: "ДУП, ФЭД",
-    comments: "Требует мониторинга"
-  },
-  {
-    category: "Налоговое регулирование / НДС (эл. торговля)",
-    title: "НДС на товары иностранных маркетплейсов",
-    change: "Планируется введение НДС на товары электронной торговли с поэтапным повышением ставки. Обязанность начислять и уплачивать НДС возлагается на налоговых агентов — иностранные маркетплейсы. Также планируются поправки в КоАП РФ (административная ответственность за нарушение порядка уплаты).",
-    act: "Законопроект (стадия разработки и обсуждения, I кв. 2026)",
-    discDate: "Обсуждение в I квартале 2026 г.",
-    prob: "75–80%",
-    probLevel: "med",
-    planDate: "2026–2027 (поэтапно)",
-    value: "Удорожание товаров иностранных маркетплейсов. Если группа использует иностранные платформы для закупок или продаж — возможно увеличение стоимости.",
-    dept: "КД, ФЭД, ДМ",
-    comments: "Требует мониторинга"
-  },
-  {
-    category: "Валютное регулирование",
-    title: "Валютные операции с цифровыми рублями",
-    change: "Законопроект об обеспечении проведения валютных операций с цифровыми рублями. Резидентам предоставляется возможность исполнить требование о репатриации через счёт цифрового рубля. Определяются особенности валютного контроля при расчётах в цифровых рублях.",
-    act: "Проект ФЗ № 1236943-8 (внесён в Госдуму мае 2026 г.)",
-    discDate: "Май 2026 г. (внесён в Госдуму)",
-    prob: "70–75%",
-    probLevel: "med",
-    planDate: "Через 180 дней после опубликования",
-    value: "Расширение инструментов исполнения валютного законодательства за счёт цифрового рубля. Потребует обновления внутренних процедур валютного контроля после принятия закона.",
-    dept: "ФЭД, КД",
-    comments: "Требует мониторинга"
-  }
-];
+      <div class="sidebar-bottom">
+        <button class="btn-admin" onclick="openAdminPanel()">⊕ Добавить изменение</button>
+        <button class="btn-export" onclick="exportReport()">↓ Экспорт отчёта</button>
+        <div class="quarter-badge">Q1 · 2026</div>
+      </div>
+    </aside>
 
-let activeFilters = new Set();
-
-function critClass(c) { return c === 'high' ? 'high' : c === 'med' ? 'med' : 'low'; }
-
-function renderCards(items) {
-  const container = document.getElementById('cards-container');
-  container.innerHTML = '';
-  items.forEach((d, i) => {
-    const div = document.createElement('div');
-    div.className = 'card';
-    div.dataset.idx = i;
-    div.innerHTML = `
-      <div class="card-header" onclick="toggleCard(this)">
-        <div class="card-num">${d.num}.</div>
-        <div class="card-title-block">
-          <div class="card-category">${d.category}</div>
-          <div class="card-title">${d.title}</div>
-          <div class="card-meta">
-            <span class="badge-crit ${critClass(d.crit)}">${d.critLabel}</span>
-            <span class="badge-dept">${d.dept}</span>
-            <span class="badge-date">${d.date}</span>
-            <span class="badge-status">${d.status}</span>
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+      <header class="top-bar">
+        <div class="top-bar-left">
+          <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+          <div class="page-title" id="page-title">Обзор</div>
+        </div>
+        <div class="top-bar-right">
+          <div class="search-wrapper">
+            <input type="text" id="search-input" placeholder="Поиск по изменениям…" oninput="filterSearch(this.value)">
+            <span class="search-icon">⌕</span>
+          </div>
+          <div class="user-select-wrapper">
+            <select id="current-user" onchange="updateUser(this.value)">
+              <option value="">— Выберите роль —</option>
+              <option value="ДУП">ДУП</option>
+              <option value="ФЭД">ФЭД</option>
+              <option value="КД">КД</option>
+              <option value="ДЛ">ДЛ</option>
+              <option value="Юрист">Юрист</option>
+              <option value="Руководство">Руководство</option>
+            </select>
           </div>
         </div>
-        <span class="card-chevron">&#8964;</span>
+      </header>
+
+      <!-- DASHBOARD VIEW -->
+      <div id="view-dashboard" class="view active">
+        <div class="dashboard-grid">
+          <div class="stat-card stat-total">
+            <div class="stat-number" id="stat-total">9</div>
+            <div class="stat-label">Всего изменений</div>
+          </div>
+          <div class="stat-card stat-high">
+            <div class="stat-number" id="stat-high">0</div>
+            <div class="stat-label">Высокая критичность</div>
+          </div>
+          <div class="stat-card stat-medium">
+            <div class="stat-number" id="stat-medium">0</div>
+            <div class="stat-label">Средняя критичность</div>
+          </div>
+          <div class="stat-card stat-pending">
+            <div class="stat-number" id="stat-pending">0</div>
+            <div class="stat-label">Ожидают подтверждения</div>
+          </div>
+        </div>
+
+        <div class="dashboard-row">
+          <div class="card">
+            <div class="card-header">
+              <h3>Срочные к исполнению</h3>
+              <span class="card-hint">по дате вступления</span>
+            </div>
+            <div id="urgent-list" class="urgent-list"></div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <h3>Статус ознакомления</h3>
+              <span class="card-hint">по департаментам</span>
+            </div>
+            <div id="ack-summary" class="ack-summary"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>Compliance-дайджест Q1 2026</h3>
+            <span class="card-hint">сформирован автоматически</span>
+          </div>
+          <div class="digest-grid" id="digest-grid"></div>
+        </div>
       </div>
-      <div class="card-body">
-        <div class="detail-grid">
-          <div class="detail-item full">
-            <label>Суть изменения</label>
-            <p>${d.change}</p>
+
+      <!-- PUBLISHED VIEW -->
+      <div id="view-published" class="view">
+        <div class="changes-list" id="list-published"></div>
+      </div>
+
+      <!-- DRAFT VIEW -->
+      <div id="view-draft" class="view">
+        <div class="changes-list" id="list-draft"></div>
+      </div>
+
+      <!-- COMMENTS VIEW -->
+      <div id="view-comments" class="view">
+        <div class="card">
+          <div class="card-header">
+            <h3>Все комментарии и подтверждения</h3>
           </div>
-          <div class="detail-item full">
+          <div id="all-comments-list" class="all-comments-list"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- CHANGE DETAIL MODAL -->
+  <div class="modal-overlay" id="modal-overlay" onclick="closeModal()">
+    <div class="modal" id="modal" onclick="event.stopPropagation()">
+      <button class="modal-close" onclick="closeModal()">×</button>
+      <div id="modal-content"></div>
+    </div>
+  </div>
+
+  <!-- ADMIN PANEL MODAL -->
+  <div class="modal-overlay" id="admin-overlay" onclick="closeAdmin()">
+    <div class="modal modal-admin" id="admin-modal" onclick="event.stopPropagation()">
+      <button class="modal-close" onclick="closeAdmin()">×</button>
+      <div class="admin-header">
+        <h2>Добавить изменение законодательства</h2>
+        <p>Заполните форму — запись сохранится в базе данных</p>
+      </div>
+      <form class="admin-form" onsubmit="submitNewChange(event)">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Тип</label>
+            <select name="type" required>
+              <option value="published">Опубликованный НПА</option>
+              <option value="draft">Проектный НПА</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Критичность</label>
+            <select name="criticality">
+              <option value="Высокая">Высокая</option>
+              <option value="Средняя">Средняя</option>
+              <option value="Низкая">Низкая</option>
+              <option value="Отсутствует">Отсутствует</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Категория</label>
+          <input name="category" type="text" placeholder="Трудовое право / Налоговое регулирование…" required>
+        </div>
+        <div class="form-group">
+          <label>Суть изменения</label>
+          <textarea name="summary" rows="4" placeholder="Подробное описание изменения…" required></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
             <label>Нормативный акт</label>
-            <p class="detail-act">${d.act}</p>
+            <input name="norm_act" type="text" placeholder="ФЗ от … № …">
           </div>
-          <div class="detail-item">
-            <label>Влияние на компанию</label>
-            <p>${d.impact}</p>
+          <div class="form-group">
+            <label>Дата вступления в силу</label>
+            <input name="effective_date" type="date">
           </div>
-          <div class="detail-item">
-            <label>Митигация риска</label>
-            <p>${d.mitigation}</p>
-          </div>
-          <div class="detail-item">
-            <label>Штрафные санкции</label>
-            <p>${d.penalties}</p>
-          </div>
-          <div class="detail-item">
+        </div>
+        <div class="form-group">
+          <label>Штрафные санкции</label>
+          <input name="sanctions" type="text" placeholder="Размер штрафов, иные санкции…">
+        </div>
+        <div class="form-group">
+          <label>Влияние на компанию</label>
+          <textarea name="impact" rows="3" placeholder="Как изменение влияет на деятельность…"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Митигация риска / Рекомендуемые действия</label>
+          <textarea name="mitigation" rows="3" placeholder="Что нужно сделать для соблюдения требований…"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
             <label>Срок адаптации</label>
-            <p>${d.deadline}</p>
+            <input name="deadline" type="text" placeholder="До 01.09.2026">
+          </div>
+          <div class="form-group">
+            <label>Статус</label>
+            <select name="status">
+              <option value="Учесть в работе">Учесть в работе</option>
+              <option value="Для информации">Для информации</option>
+              <option value="Выполнено">Выполнено</option>
+              <option value="Мониторинг">Мониторинг</option>
+            </select>
           </div>
         </div>
-      </div>`;
-    container.appendChild(div);
-  });
-  updateStats(items);
-}
-
-function renderProjects(items) {
-  const container = document.getElementById('proj-container');
-  container.innerHTML = '';
-  items.forEach((d, i) => {
-    const div = document.createElement('div');
-    div.className = 'card';
-    div.innerHTML = `
-      <div class="card-header" onclick="toggleCard(this)">
-        <div style="flex:1">
-          <div class="card-category">${d.category}</div>
-          <div class="card-title">${d.title}</div>
-          <div class="card-meta" style="margin-top:7px">
-            <span class="prob-badge ${d.probLevel}">Вероятность: ${d.prob}</span>
-            <span class="badge-dept">${d.dept}</span>
-            <span class="badge-date">${d.planDate}</span>
-          </div>
+        <div class="form-group">
+          <label>Ответственные департаменты (через запятую)</label>
+          <input name="departments" type="text" placeholder="ДУП, ФЭД, КД">
         </div>
-        <span class="card-chevron">&#8964;</span>
-      </div>
-      <div class="card-body">
-        <div class="detail-grid">
-          <div class="detail-item full">
-            <label>Суть проектного изменения</label>
-            <p>${d.change}</p>
-          </div>
-          <div class="detail-item full">
-            <label>Нормативный акт</label>
-            <p class="detail-act">${d.act}</p>
-          </div>
-          <div class="detail-item">
-            <label>Практическое значение</label>
-            <p>${d.value}</p>
-          </div>
-          <div class="detail-item">
-            <label>Дата обсуждения</label>
-            <p>${d.discDate}</p>
-          </div>
-          <div class="detail-item full">
-            <label>Комментарии</label>
-            <p>${d.comments}</p>
-          </div>
+        <div class="form-group" id="draft-fields" style="display:none">
+          <label>Вероятность принятия</label>
+          <input name="probability" type="text" placeholder="60–70%">
         </div>
-      </div>`;
-    container.appendChild(div);
-  });
-  document.getElementById('count-proj-badge').textContent = `Показано: ${items.length} из ${PROJECTS.length}`;
-}
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" onclick="closeAdmin()">Отмена</button>
+          <button type="submit" class="btn-primary">Добавить запись</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
-function toggleCard(header) {
-  header.closest('.card').classList.toggle('open');
-}
+  <div id="toast" class="toast"></div>
 
-function updateStats(items) {
-  const h = items.filter(d => d.crit === 'high').length;
-  const m = items.filter(d => d.crit === 'med').length;
-  const l = items.filter(d => d.crit === 'low').length;
-  document.getElementById('cnt-high').textContent = h;
-  document.getElementById('cnt-med').textContent  = m;
-  document.getElementById('cnt-low').textContent  = l;
-  document.getElementById('count-badge').textContent = `Показано: ${items.length} из ${DATA.length}`;
-}
-
-function toggleFilter(level) {
-  const pill = document.querySelector(`.pill.crit-${level}`);
-  if (activeFilters.has(level)) { activeFilters.delete(level); pill.classList.remove('active'); }
-  else { activeFilters.add(level); pill.classList.add('active'); }
-  filterCards();
-}
-
-function filterCards() {
-  const q = document.getElementById('search').value.toLowerCase();
-  const filtered = DATA.filter(d => {
-    const matchFilter = activeFilters.size === 0 || activeFilters.has(d.crit);
-    const matchSearch = !q || [d.title, d.category, d.change, d.act, d.dept, d.impact].some(f => f.toLowerCase().includes(q));
-    return matchFilter && matchSearch;
-  });
-  renderCards(filtered);
-}
-
-function filterProjects() {
-  const q = document.getElementById('search-proj').value.toLowerCase();
-  const filtered = PROJECTS.filter(d =>
-    !q || [d.title, d.category, d.change, d.act, d.value].some(f => f.toLowerCase().includes(q))
-  );
-  renderProjects(filtered);
-}
-
-function switchTab(tab) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('tab-published').style.display = tab === 'published' ? '' : 'none';
-  document.getElementById('tab-projects').style.display  = tab === 'projects'  ? '' : 'none';
-  event.target.classList.add('active');
-}
-
-renderCards(DATA);
-renderProjects(PROJECTS);
-</script>
+  <script src="data.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>

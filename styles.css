@@ -1189,3 +1189,29 @@ body {
 [data-theme="light"] .toast {
   color: var(--text);
 }
+
+/* ── СВЕТЛАЯ ТЕМА — дополнительные исправления ── */
+
+/* Логотип в сайдбаре */
+[data-theme="light"] .brand-name { color: var(--text); }
+[data-theme="light"] .brand-sub  { color: var(--text-3); }
+
+/* Заголовок страницы в топ-баре */
+[data-theme="light"] .page-title { color: var(--text); }
+
+/* Активный пункт меню */
+[data-theme="light"] .nav-item.active {
+  background: var(--accent-glow);
+  color: var(--accent);
+  border-left-color: var(--accent);
+}
+
+/* Иконки пунктов меню */
+[data-theme="light"] .nav-icon { color: inherit; }
+
+/* Топ-бар фон */
+[data-theme="light"] .top-bar { background: var(--bg-2); }
+[data-theme="light"] .top-bar::after { background: var(--grad-red); }
+
+/* Sidebar brand block */
+[data-theme="light"] .sidebar-brand { background: var(--bg-3); border-bottom-color: var(--accent); }

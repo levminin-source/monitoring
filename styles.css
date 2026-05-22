@@ -1215,3 +1215,93 @@ body {
 
 /* Sidebar brand block */
 [data-theme="light"] .sidebar-brand { background: var(--bg-3); border-bottom-color: var(--accent); }
+
+/* =====================
+   ADMIN EDITOR
+   ===================== */
+.admin-badge-pill {
+  margin-left: auto;
+  background: var(--accent);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.editor-section-title {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 10px;
+}
+
+.editor-card {
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  margin-bottom: 8px;
+  transition: border 0.15s;
+}
+.editor-card:hover { border-color: var(--border-hover); }
+
+.editor-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.editor-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+  color: var(--text);
+}
+.editor-card-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.editor-card-meta {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.editor-btn-edit {
+  padding: 5px 12px;
+  background: var(--accent-glow);
+  color: var(--accent);
+  border: 1px solid rgba(200,16,46,0.3);
+  border-radius: var(--radius-sm);
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.editor-btn-edit:hover { background: var(--accent); color: #fff; }
+
+.editor-btn-delete {
+  padding: 5px 12px;
+  background: var(--high-bg);
+  color: var(--high);
+  border: 1px solid rgba(232,41,74,0.3);
+  border-radius: var(--radius-sm);
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.editor-btn-delete:hover { background: var(--high); color: #fff; }
+
+/* Light theme editor */
+[data-theme="light"] .editor-card-title { color: var(--text); }
+[data-theme="light"] .editor-section-title { color: var(--text-3); }

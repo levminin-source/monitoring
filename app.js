@@ -4,12 +4,12 @@
 // FIREBASE CONFIG — вставьте свои значения из Firebase Console
 // ============================================================
 const FIREBASE_CONFIG = {
-  apiKey:            "AIzaSyDD_IwbIN87V6VXWqpTKkEV3aEfh8ZQw8k",
-  authDomain:        "marshall-compliance-monitor.firebaseapp.com",
-  projectId:         "marshall-compliance-monitor",
-  storageBucket:     "marshall-compliance-monitor.firebasestorage.app",
-  messagingSenderId: "417137979657",
-  appId:             "1:417137979657:web:936c1706379c270c5c23d8"
+  apiKey:            "YOUR_API_KEY",
+  authDomain:        "YOUR_PROJECT.firebaseapp.com",
+  projectId:         "YOUR_PROJECT_ID",
+  storageBucket:     "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId:             "YOUR_APP_ID"
 };
 
 // ============================================================
@@ -27,6 +27,17 @@ let db    = null;
 let auth  = null;
 
 const CONFIGURED = FIREBASE_CONFIG.apiKey !== 'YOUR_API_KEY';
+
+// ============================================================
+// ADMIN CONFIG — добавьте email юриста-администратора
+// ============================================================
+const ADMIN_EMAILS = [
+  'YOUR_LAWYER_EMAIL@marshall.com'   // ← замените на реальный email
+];
+
+function isAdmin() {
+  return ADMIN_EMAILS.includes(currentEmail);
+}
 
 // ============================================================
 // FIREBASE INIT
@@ -203,6 +214,12 @@ function showApp() {
     });
     typeSelect._initDone = true;
   }
+
+  // Показываем/скрываем элементы только для администратора
+  const adminNav   = document.getElementById('nav-admin');
+  const adminBtn   = document.getElementById('btn-add-change');
+  if (adminNav) adminNav.style.display = isAdmin() ? 'flex' : 'none';
+  if (adminBtn) adminBtn.style.display = isAdmin() ? 'block' : 'none';
 }
 
 // ============================================================
@@ -258,6 +275,11 @@ function setView(view) {
     const overlay = document.getElementById('sidebar-overlay');
     if (overlay) overlay.classList.remove('visible');
   }
+  // Проверка доступа к редактору
+  if (view === 'admin-editor' && !isAdmin()) {
+    showToast('Доступ запрещён', 'error');
+    return;
+  }
   currentView = view;
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('view-' + view).classList.add('active');
@@ -265,13 +287,15 @@ function setView(view) {
     n.classList.toggle('active', n.dataset.view === view);
   });
   const titles = {
-    dashboard: 'Обзор',
-    published: 'Опубликованные НПА',
-    draft:     'Проектные НПА',
-    comments:  'Комментарии'
+    dashboard:    'Обзор',
+    published:    'Опубликованные НПА',
+    draft:        'Проектные НПА',
+    comments:     'Комментарии',
+    'admin-editor': '⚙ Редактор НПА'
   };
   document.getElementById('page-title').textContent = titles[view] || '';
-  if (view === 'comments') renderAllComments();
+  if (view === 'comments')      renderAllComments();
+  if (view === 'admin-editor')  renderEditor();
 }
 
 function toggleSidebar() {
@@ -333,7 +357,15 @@ function applyFilters(changes) {
 // HELPERS
 // ============================================================
 function getAllChanges() {
-  return [...PUBLISHED_CHANGES, ...DRAFT_CHANGES, ...store.extraChanges];
+  // Применяем патчи к базовым записям из data.js
+  const patches = {};
+  store.extraChanges.forEach(x => { if (x._patchFor) patches[x._patchFor] = x; });
+
+  const base = [...PUBLISHED_CHANGES, ...DRAFT_CHANGES].map(c =>
+    patches[c.id] ? { ...c, ...patches[c.id] } : c
+  );
+  const extras = store.extraChanges.filter(x => !x._patchFor);
+  return [...base, ...extras];
 }
 function critClass(crit) {
   return { 'Высокая':'high','Средняя':'medium','Низкая':'low','Отсутствует':'none' }[crit] || 'low';
@@ -718,6 +750,184 @@ function showToast(msg, type = '') {
   t.textContent = msg;
   t.className   = 'toast show ' + type;
   setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+
+// ============================================================
+// ADMIN EDITOR
+// ============================================================
+function renderEditor() {
+  if (!isAdmin()) return;
+  const container = document.getElementById('editor-list');
+  if (!container) return;
+
+  const allPub = [...PUBLISHED_CHANGES, ...store.extraChanges.filter(c => c.type === 'published')];
+  const allDft = [...DRAFT_CHANGES,     ...store.extraChanges.filter(c => c.type === 'draft')];
+
+  container.innerHTML = `
+    <div class="editor-section">
+      <div class="editor-section-title">Опубликованные НПА (${allPub.length})</div>
+      ${allPub.map(c => editorCard(c)).join('')}
+    </div>
+    <div class="editor-section" style="margin-top:24px">
+      <div class="editor-section-title">Проектные НПА (${allDft.length})</div>
+      ${allDft.map(c => editorCard(c)).join('')}
+    </div>`;
+}
+
+function editorCard(c) {
+  const isExtra = store.extraChanges.some(x => x.id === c.id);
+  return `<div class="editor-card" id="ecard-${c.id}">
+    <div class="editor-card-header">
+      <span class="change-number">#${c.num}</span>
+      <span class="editor-card-title">${c.title}</span>
+      <div class="editor-card-actions">
+        <button class="editor-btn-edit" onclick="openEditModal('${c.id}')">✎ Редактировать</button>
+        ${isExtra ? `<button class="editor-btn-delete" onclick="deleteChange('${c.id}')">✕ Удалить</button>` : ''}
+      </div>
+    </div>
+    <div class="editor-card-meta">
+      <span class="badge badge-dept">${(c.departments||[]).join(', ')}</span>
+      ${c.criticality ? `<span class="badge badge-${critClass(c.criticality)}">${c.criticality}</span>` : ''}
+      ${c.status ? `<span class="badge badge-status">${c.status}</span>` : ''}
+    </div>
+  </div>`;
+}
+
+function openEditModal(id) {
+  const c = getAllChanges().find(x => x.id === id);
+  if (!c) return;
+  const isDraft = DRAFT_CHANGES.some(x => x.id === id) || c.type === 'draft';
+
+  document.getElementById('edit-modal-overlay').classList.add('open');
+  document.getElementById('edit-modal-content').innerHTML = `
+    <div class="modal-cat">${isDraft ? 'Проектный НПА' : 'Опубликованный НПА'} · редактирование</div>
+    <div class="modal-title" style="margin-bottom:20px">${c.title}</div>
+    <form class="admin-form" onsubmit="saveEdit(event, '${id}')">
+      <div class="form-group">
+        <label>Категория</label>
+        <input name="category" value="${(c.category||'').replace(/"/g,'&quot;')}" required>
+      </div>
+      <div class="form-group">
+        <label>Суть изменения</label>
+        <textarea name="summary" rows="5" required>${c.summary||''}</textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Нормативный акт</label>
+          <input name="norm_act" value="${(c.normAct||'').replace(/"/g,'&quot;')}">
+        </div>
+        <div class="form-group">
+          <label>${isDraft ? 'Плановая дата' : 'Дата вступления'}</label>
+          <input name="effective_date" type="date" value="${c.effectiveDate||''}">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Штрафные санкции</label>
+        <input name="sanctions" value="${(c.sanctions||'').replace(/"/g,'&quot;')}">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Критичность</label>
+          <select name="criticality">
+            ${['Высокая','Средняя','Низкая','Отсутствует'].map(v =>
+              `<option value="${v}" ${c.criticality===v?'selected':''}>${v}</option>`
+            ).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Статус</label>
+          <select name="status">
+            ${['Учесть в работе','Для информации','Выполнено','Мониторинг'].map(v =>
+              `<option value="${v}" ${c.status===v?'selected':''}>${v}</option>`
+            ).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Влияние на компанию</label>
+        <textarea name="impact" rows="3">${c.impact||''}</textarea>
+      </div>
+      <div class="form-group">
+        <label>Митигация риска</label>
+        <textarea name="mitigation" rows="3">${c.mitigation||''}</textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Срок адаптации</label>
+          <input name="deadline" value="${(c.deadline||'').replace(/"/g,'&quot;')}">
+        </div>
+        <div class="form-group">
+          <label>Департаменты (через запятую)</label>
+          <input name="departments" value="${(c.departments||[]).join(', ')}">
+        </div>
+      </div>
+      ${isDraft ? `<div class="form-group"><label>Вероятность принятия</label>
+        <input name="probability" value="${(c.probability||'').replace(/"/g,'&quot;')}"></div>` : ''}
+      <div class="form-actions">
+        <button type="button" class="btn-secondary" onclick="closeEditModal()">Отмена</button>
+        <button type="submit" class="btn-primary">Сохранить изменения</button>
+      </div>
+    </form>`;
+}
+
+async function saveEdit(e, id) {
+  e.preventDefault();
+  const fd  = new FormData(e.target);
+  const idx = store.extraChanges.findIndex(x => x.id === id);
+
+  const updated = {
+    category:      fd.get('category'),
+    summary:       fd.get('summary'),
+    normAct:       fd.get('norm_act'),
+    effectiveDate: fd.get('effective_date'),
+    sanctions:     fd.get('sanctions'),
+    criticality:   fd.get('criticality'),
+    status:        fd.get('status'),
+    impact:        fd.get('impact'),
+    mitigation:    fd.get('mitigation'),
+    deadline:      fd.get('deadline'),
+    departments:   fd.get('departments').split(',').map(d => d.trim()).filter(Boolean),
+    probability:   fd.get('probability') || null,
+  };
+
+  if (idx !== -1) {
+    // Запись из extraChanges — редактируем напрямую
+    store.extraChanges[idx] = { ...store.extraChanges[idx], ...updated };
+  } else {
+    // Запись из data.js — сохраняем патч в extraChanges с флагом patch
+    const orig = getAllChanges().find(x => x.id === id);
+    if (orig) {
+      // Ищем существующий патч
+      const patchIdx = store.extraChanges.findIndex(x => x._patchFor === id);
+      const patch = { ...orig, ...updated, _patchFor: id };
+      if (patchIdx !== -1) store.extraChanges[patchIdx] = patch;
+      else store.extraChanges.push(patch);
+    }
+  }
+
+  await saveToCloud();
+  closeEditModal();
+  renderEditor();
+  renderPublished();
+  renderDraft();
+  renderDashboard();
+  showToast('✓ Изменения сохранены', 'success');
+}
+
+async function deleteChange(id) {
+  if (!confirm('Удалить эту запись? Действие нельзя отменить.')) return;
+  store.extraChanges = store.extraChanges.filter(x => x.id !== id);
+  await saveToCloud();
+  renderEditor();
+  renderPublished();
+  renderDraft();
+  renderDashboard();
+  showToast('Запись удалена', 'success');
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal-overlay').classList.remove('open');
 }
 
 // ============================================================

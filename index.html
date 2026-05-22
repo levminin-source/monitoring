@@ -8,6 +8,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <script>
+    // Антимигание: применяем тему до рендера
+    (function() {
+      const t = localStorage.getItem('compliance_theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
   <style>
     #loading-bar {
       display: none;
@@ -319,6 +326,14 @@
             <input type="text" id="search-input" placeholder="Поиск по изменениям…" oninput="filterSearch(this.value)">
             <span class="search-icon">⌕</span>
           </div>
+          <!-- Theme toggle -->
+          <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Переключить тему">
+            <span class="theme-toggle-icon" id="theme-icon">☀</span>
+            <div class="theme-toggle-track">
+              <div class="theme-toggle-thumb"></div>
+            </div>
+          </button>
+
           <!-- User chip — заполняется после входа -->
           <div class="user-chip" id="user-chip">
             <div class="user-chip-avatar" id="user-chip-avatar">?</div>

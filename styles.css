@@ -5,47 +5,63 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  /* Marshall Brand Colors */
+  /* ── ТЁМНАЯ ТЕМА (по умолчанию) ── */
   --bg:       #091525;
   --bg-2:     #0d1e34;
   --bg-3:     #112440;
   --bg-4:     #162d4e;
   --border:        rgba(255,255,255,0.08);
   --border-hover:  rgba(255,255,255,0.16);
-
   --text:   #ffffff;
   --text-2: #a8b8cc;
   --text-3: #5a7290;
+  --shadow: 0 4px 32px rgba(0,0,0,0.5);
 
-  /* Marshall Red */
-  --accent:      #C8102E;
+  /* Marshall Red — неизменный в обеих темах */
+  --accent:       #C8102E;
   --accent-light: #e8294a;
-  --accent-glow: rgba(200,16,46,0.18);
+  --accent-glow:  rgba(200,16,46,0.15);
 
-  /* Secondary: muted steel blue */
+  /* Secondary */
   --accent-2: #4a7fa5;
 
   /* Risk levels */
-  --high:    #E8294A;
-  --high-bg: rgba(232,41,74,0.12);
-  --medium:  #F5A623;
-  --medium-bg: rgba(245,166,35,0.12);
-  --low:     #27AE60;
-  --low-bg:  rgba(39,174,96,0.12);
-  --none:    #4a7fa5;
-  --none-bg: rgba(74,127,165,0.12);
+  --high:       #E8294A;
+  --high-bg:    rgba(232,41,74,0.12);
+  --medium:     #D4820A;
+  --medium-bg:  rgba(212,130,10,0.12);
+  --low:        #27AE60;
+  --low-bg:     rgba(39,174,96,0.12);
+  --none:       #4a7fa5;
+  --none-bg:    rgba(74,127,165,0.12);
 
   --sidebar-w: 268px;
   --radius:    10px;
   --radius-sm: 6px;
-  --shadow:    0 4px 32px rgba(0,0,0,0.5);
-
-  /* Fonts */
   --font: 'Onest', sans-serif;
   --mono: 'JetBrains Mono', monospace;
-
-  /* Marshall gradient divider */
   --grad-red: linear-gradient(90deg, #C8102E 0%, #e8759a 60%, rgba(200,16,46,0) 100%);
+}
+
+/* ── СВЕТЛАЯ ТЕМА ── */
+[data-theme="light"] {
+  --bg:       #f0f4f8;
+  --bg-2:     #ffffff;
+  --bg-3:     #eaf0f7;
+  --bg-4:     #dce6f0;
+  --border:        rgba(0,0,0,0.09);
+  --border-hover:  rgba(0,0,0,0.18);
+  --text:   #0d1e34;
+  --text-2: #3d5a78;
+  --text-3: #8aa0b8;
+  --shadow: 0 4px 24px rgba(13,30,52,0.1);
+
+  --accent-glow: rgba(200,16,46,0.10);
+
+  --high-bg:   rgba(232,41,74,0.08);
+  --medium-bg: rgba(212,130,10,0.09);
+  --low-bg:    rgba(39,174,96,0.09);
+  --none-bg:   rgba(74,127,165,0.09);
 }
 
 html, body { height: 100%; }
@@ -60,6 +76,9 @@ body {
 
 /* LAYOUT */
 #app { display: flex; height: 100vh; overflow: hidden; }
+@media (min-width: 901px) {
+  #app { display: flex !important; }
+}
 
 /* =====================
    SIDEBAR
@@ -893,7 +912,7 @@ body {
 
 /* On mobile sidebar floats over content */
 @media (max-width: 900px) {
-  #app { display: block; position: relative; }
+  #app { display: block !important; position: relative; }
 
   .sidebar {
     position: fixed;
@@ -993,4 +1012,98 @@ body {
   .login-card { padding: 24px 16px; margin: 12px; }
   .badge { font-size: 10px; padding: 2px 6px; }
   .urgent-item { flex-wrap: wrap; gap: 4px; }
+}
+
+/* =====================
+   THEME TOGGLE BUTTON
+   ===================== */
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 5px 12px 5px 8px;
+  cursor: pointer;
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.theme-toggle:hover { border-color: var(--border-hover); color: var(--text); }
+
+.theme-toggle-track {
+  width: 28px;
+  height: 16px;
+  background: var(--bg-4);
+  border-radius: 10px;
+  position: relative;
+  transition: background 0.25s;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+}
+.theme-toggle-thumb {
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--text-3);
+  transition: transform 0.25s, background 0.25s;
+}
+[data-theme="light"] .theme-toggle-track { background: var(--accent-glow); border-color: var(--accent); }
+[data-theme="light"] .theme-toggle-thumb { transform: translateX(12px); background: var(--accent); }
+[data-theme="light"] .theme-toggle { color: var(--accent); border-color: rgba(200,16,46,0.3); }
+
+.theme-toggle-icon { font-size: 14px; }
+
+/* Login screen light theme adjustments */
+[data-theme="light"] .login-card {
+  box-shadow: 0 8px 48px rgba(13,30,52,0.15);
+}
+[data-theme="light"] #login-screen {
+  background: var(--bg);
+}
+
+/* Ensure form inputs look right in light mode */
+[data-theme="light"] .form-group input,
+[data-theme="light"] .form-group select,
+[data-theme="light"] .form-group textarea,
+[data-theme="light"] .login-field input,
+[data-theme="light"] .login-role-field select,
+[data-theme="light"] .comment-type-select,
+[data-theme="light"] .comment-textarea,
+[data-theme="light"] .search-wrapper input,
+[data-theme="light"] .mobile-search input,
+[data-theme="light"] .user-select-wrapper select {
+  color: var(--text);
+}
+
+/* Cards in light mode need subtle shadow */
+[data-theme="light"] .card,
+[data-theme="light"] .change-card,
+[data-theme="light"] .stat-card,
+[data-theme="light"] .digest-card {
+  box-shadow: 0 1px 4px rgba(13,30,52,0.07);
+}
+[data-theme="light"] .change-card:hover,
+[data-theme="light"] .digest-card:hover {
+  box-shadow: 0 4px 16px rgba(13,30,52,0.12);
+}
+
+/* Modal in light mode */
+[data-theme="light"] .modal {
+  box-shadow: 0 16px 60px rgba(13,30,52,0.18);
+}
+
+/* Sidebar brand block */
+[data-theme="light"] .sidebar-brand {
+  background: var(--bg-3);
+}
+
+/* Toast */
+[data-theme="light"] .toast {
+  color: var(--text);
 }

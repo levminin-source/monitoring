@@ -4,12 +4,12 @@
 // FIREBASE CONFIG — вставьте свои значения из Firebase Console
 // ============================================================
 const FIREBASE_CONFIG = {
-  apiKey:            "AIzaSyDD_IwbIN87V6VXWqpTKkEV3aEfh8ZQw8k",
-  authDomain:        "marshall-compliance-monitor.firebaseapp.com",
-  projectId:         "marshall-compliance-monitor",
-  storageBucket:     "marshall-compliance-monitor.firebasestorage.app",
-  messagingSenderId: "417137979657",
-  appId:             "1:417137979657:web:936c1706379c270c5c23d8"
+  apiKey:            "YOUR_API_KEY",
+  authDomain:        "YOUR_PROJECT.firebaseapp.com",
+  projectId:         "YOUR_PROJECT_ID",
+  storageBucket:     "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId:             "YOUR_APP_ID"
 };
 
 // ============================================================
@@ -182,7 +182,7 @@ function showLoginScreen() {
 
 function showApp() {
   document.getElementById('login-screen').classList.remove('visible');
-  document.getElementById('app').style.display = 'block';
+  document.getElementById('app').style.display = window.innerWidth <= 900 ? 'block' : 'flex';
   // На мобильном сайдбар скрыт по умолчанию
   if (window.innerWidth <= 900) {
     document.getElementById('sidebar').classList.add('hidden');
@@ -209,6 +209,8 @@ function showApp() {
 // INIT
 // ============================================================
 document.addEventListener('DOMContentLoaded', () => {
+  initTheme(); // применяем сохранённую тему
+
   if (CONFIGURED) {
     initFirebase();
     // onAuthStateChanged управляет показом экранов
@@ -717,3 +719,29 @@ function showToast(msg, type = '') {
   t.className   = 'toast show ' + type;
   setTimeout(() => t.classList.remove('show'), 3500);
 }
+
+// ============================================================
+// THEME TOGGLE
+// ============================================================
+function initTheme() {
+  const saved = localStorage.getItem('compliance_theme') || 'dark';
+  applyTheme(saved);
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') || 'dark';
+  applyTheme(current === 'dark' ? 'light' : 'dark');
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('compliance_theme', theme);
+  const icon = document.getElementById('theme-icon');
+  if (icon) icon.textContent = theme === 'light' ? '☾' : '☀';
+}
+
+// Применяем тему сразу при загрузке (до DOMContentLoaded чтобы не мигало)
+(function() {
+  const saved = localStorage.getItem('compliance_theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+})();

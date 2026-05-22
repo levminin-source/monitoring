@@ -255,6 +255,8 @@ function showApp() {
 
   // Показываем баннер обязательного ознакомления
   setTimeout(showAckBanner, 800);
+  // Инициализируем кнопку тура
+  setTimeout(initTourButton, 500);
 }
 
 function showAckBanner() {
@@ -751,8 +753,24 @@ function renderAllComments() {
     container.innerHTML = `<div class="empty-state"><div class="icon">◷</div><p>Комментариев пока нет</p></div>`;
     return;
   }
-  container.innerHTML = [...all].reverse().map(cm => `
-    <div class="all-comment-item type-${cm.type}" onclick="openChange('${cm.id}')">
+  // Поиск по комментариям
+  const filtered = searchQuery && searchComments
+    ? all.filter(cm =>
+        (cm.text||'').toLowerCase().includes(searchQuery) ||
+        (cm.author||'').toLowerCase().includes(searchQuery) ||
+        (cm.changeTitle||'').toLowerCase().includes(searchQuery))
+    : all;
+
+  container.innerHTML = [...filtered].reverse().map(cm => {
+    const repliesHtml = (cm.replies||[]).map(r => `
+      <div class="reply-item" style="margin-top:6px">
+        <div class="comment-meta">
+          <span class="comment-author">${r.author}</span>
+          <span class="comment-time">${r.time}</span>
+        </div>
+        ${r.text ? `<div class="comment-text">${r.text}</div>` : ''}
+      </div>`).join('');
+    return `<div class="all-comment-item type-${cm.type}" onclick="openChange('${cm.id}')">
       <div class="all-comment-link">→ ${cm.changeTitle}</div>
       <div class="comment-meta">
         <span class="comment-author">${cm.author}</span>
@@ -761,9 +779,11 @@ function renderAllComments() {
           cm.type === 'ack' ? '✓ Ознакомлен' : cm.type === 'issue' ? '⚠ Вопрос' : '💬 Комментарий'
         }</span>
       </div>
-      ${cm.email ? `<div style="font-size:11px;color:var(--text-3);margin:2px 0 4px">${cm.email}</div>` : ''}
-      ${cm.text  ? `<div class="comment-text">${cm.text}</div>` : ''}
-    </div>`).join('');
+      ${cm.dept ? `<div class="comment-dept">${cm.dept}</div>` : ''}
+      ${cm.text ? `<div class="comment-text${cm.edited?' comment-text-edited':''}">${cm.text}</div>` : ''}
+      ${repliesHtml}
+    </div>`;
+  }).join('');
 }
 
 function updateBadges() {
@@ -1447,6 +1467,230 @@ function _doSendEmail(entry) {
       site_url:    window.location.origin + window.location.pathname
     }).catch(e => console.warn('EmailJS error:', e));
   });
+}
+
+// ============================================================
+// ONBOARDING TOUR
+// ============================================================
+const TOUR_STEPS = [
+  {
+    title: 'Добро пожаловать в Compliance Monitor',
+    text: 'Эта система помогает вам быть в курсе всех изменений в законодательстве, которые касаются вашей работы. Ничего лишнего — только то, что важно для вас лично.',
+    target: null,
+    position: 'center',
+    icon: '⚖'
+  },
+  {
+    title: 'Обзор — ваш главный экран',
+    text: 'Здесь сразу видно самое важное: сколько изменений требуют внимания, что нужно сделать срочно и кто из коллег уже ознакомился с материалами.',
+    target: '[data-view="dashboard"]',
+    position: 'right',
+    icon: '◈'
+  },
+  {
+    title: 'Опубликованные НПА',
+    text: 'Здесь находятся законы и нормативные акты, которые уже вступили в силу или скоро вступят. Каждый документ сопровождается объяснением — как он влияет на вашу работу и что нужно сделать.',
+    target: '[data-view="published"]',
+    position: 'right',
+    icon: '◉'
+  },
+  {
+    title: 'Проектные НПА',
+    text: 'Законопроекты, которые ещё обсуждаются. Юристы уже отслеживают их и оценивают вероятность принятия — чтобы вы могли подготовиться заранее.',
+    target: '[data-view="draft"]',
+    position: 'right',
+    icon: '◎'
+  },
+  {
+    title: 'Как ознакомиться с изменением',
+    text: 'Откройте любую карточку → прочитайте → нажмите «✓ Ознакомлен(а)». Это важно: система фиксирует, что вы изучили изменение. Если есть вопрос — выберите «⚠ Вопрос / Риск» и юрист ответит прямо в системе.',
+    target: '[data-view="published"]',
+    position: 'right',
+    icon: '✓',
+    action: () => setView('published')
+  },
+  {
+    title: 'Красный баннер — не игнорируйте',
+    text: 'Если при входе появляется красная полоска сверху — значит есть важные изменения, с которыми вы ещё не ознакомились. Нажмите на неё и система покажет что именно нужно прочитать.',
+    target: '#ack-banner',
+    position: 'bottom',
+    icon: '⚠'
+  },
+  {
+    title: 'Дедлайн-индикаторы',
+    text: 'Цветные метки справа в карточках показывают сколько дней осталось до вступления закона в силу. 🔴 Красный — меньше 30 дней, срочно. 🟡 Жёлтый — до 90 дней. 🟢 Зелёный — всё спокойно.',
+    target: '#list-published',
+    position: 'top',
+    icon: '⏱',
+    action: () => setView('published')
+  },
+  {
+    title: 'Фильтры — найдите своё',
+    text: 'Используйте фильтры слева: выберите свой департамент — и увидите только те изменения, которые касаются вас. Кнопки «Не ознакомлен / Ознакомлен» помогут быстро понять что ещё нужно прочитать.',
+    target: '.dept-filters',
+    position: 'right',
+    icon: '⊟'
+  },
+  {
+    title: 'Комментарии — диалог с юристом',
+    text: 'В разделе «Комментарии» собраны все обсуждения. Вы можете задать вопрос под любым НПА, ответить коллеге или написать, что изменение уже учтено в вашей работе.',
+    target: '[data-view="comments"]',
+    position: 'right',
+    icon: '💬'
+  },
+  {
+    title: 'Предложить изменение',
+    text: 'Заметили важное изменение в законодательстве, но его ещё нет в системе? Нажмите «✉ Предложить изменение» — юрист получит уведомление и рассмотрит вашу находку.',
+    target: '#btn-propose',
+    position: 'top',
+    icon: '✉'
+  },
+  {
+    title: 'Всё готово!',
+    text: 'Теперь вы знаете как пользоваться системой. Главное правило: заходите раз в неделю, читайте новые изменения и нажимайте «Ознакомлен». Это занимает 5–10 минут, но защищает вас и компанию.',
+    target: null,
+    position: 'center',
+    icon: '🎯'
+  }
+];
+
+let tourStep = 0;
+let tourActive = false;
+
+function startTour() {
+  tourStep = 0;
+  tourActive = true;
+  setView('dashboard');
+  document.getElementById('tour-overlay').style.display = 'block';
+  renderTourStep();
+}
+
+function endTour() {
+  tourActive = false;
+  document.getElementById('tour-overlay').style.display = 'none';
+  document.getElementById('tour-popup').style.cssText = '';
+  clearTourHighlight();
+  localStorage.setItem('compliance_tour_done', '1');
+  // Убираем кнопку "?" с подсветкой
+  const btn = document.getElementById('tour-btn');
+  if (btn) btn.classList.remove('tour-btn-pulse');
+}
+
+function tourNext() {
+  tourStep++;
+  if (tourStep >= TOUR_STEPS.length) { endTour(); return; }
+  renderTourStep();
+}
+
+function tourPrev() {
+  if (tourStep > 0) { tourStep--; renderTourStep(); }
+}
+
+function renderTourStep() {
+  const step = TOUR_STEPS[tourStep];
+  if (!step) { endTour(); return; }
+
+  // Выполняем action если есть
+  if (step.action) step.action();
+
+  clearTourHighlight();
+
+  // Подсвечиваем целевой элемент
+  let targetEl = null;
+  if (step.target) {
+    targetEl = document.querySelector(step.target);
+    if (targetEl) targetEl.classList.add('tour-highlight');
+  }
+
+  const popup = document.getElementById('tour-popup');
+  const total = TOUR_STEPS.length;
+  const isFirst = tourStep === 0;
+  const isLast  = tourStep === total - 1;
+
+  popup.innerHTML = `
+    <div class="tour-icon">${step.icon}</div>
+    <div class="tour-progress">
+      ${Array.from({length: total}, (_,i) =>
+        `<div class="tour-dot ${i === tourStep ? 'active' : i < tourStep ? 'done' : ''}"></div>`
+      ).join('')}
+    </div>
+    <div class="tour-step-label">Шаг ${tourStep + 1} из ${total}</div>
+    <h3 class="tour-title">${step.title}</h3>
+    <p class="tour-text">${step.text}</p>
+    <div class="tour-actions">
+      <button class="tour-skip" onclick="endTour()">Пропустить</button>
+      <div style="display:flex;gap:8px">
+        ${!isFirst ? `<button class="tour-prev" onclick="tourPrev()">← Назад</button>` : ''}
+        <button class="tour-next" onclick="tourNext()">
+          ${isLast ? '🎯 Начать работу' : 'Далее →'}
+        </button>
+      </div>
+    </div>`;
+
+  // Позиционируем popup
+  positionTourPopup(popup, targetEl, step.position);
+}
+
+function positionTourPopup(popup, targetEl, position) {
+  popup.style.cssText = '';
+  popup.style.display = 'block';
+
+  if (!targetEl || position === 'center') {
+    popup.style.position = 'fixed';
+    popup.style.top = '50%';
+    popup.style.left = '50%';
+    popup.style.transform = 'translate(-50%, -50%)';
+    return;
+  }
+
+  const rect = targetEl.getBoundingClientRect();
+  const pw = popup.offsetWidth || 320;
+  const ph = popup.offsetHeight || 260;
+  const margin = 16;
+
+  popup.style.position = 'fixed';
+  popup.style.transform = 'none';
+
+  if (position === 'right') {
+    popup.style.left = Math.min(rect.right + margin, window.innerWidth - pw - margin) + 'px';
+    popup.style.top  = Math.max(margin, Math.min(rect.top, window.innerHeight - ph - margin)) + 'px';
+  } else if (position === 'bottom') {
+    popup.style.top  = (rect.bottom + margin) + 'px';
+    popup.style.left = Math.max(margin, Math.min(rect.left, window.innerWidth - pw - margin)) + 'px';
+  } else if (position === 'top') {
+    popup.style.top  = Math.max(margin, rect.top - ph - margin) + 'px';
+    popup.style.left = Math.max(margin, Math.min(rect.left, window.innerWidth - pw - margin)) + 'px';
+  } else {
+    popup.style.top  = '50%';
+    popup.style.left = '50%';
+    popup.style.transform = 'translate(-50%, -50%)';
+  }
+}
+
+function clearTourHighlight() {
+  document.querySelectorAll('.tour-highlight').forEach(el => el.classList.remove('tour-highlight'));
+}
+
+// Показываем кнопку тура после входа и проверяем первый визит
+function initTourButton() {
+  const done = localStorage.getItem('compliance_tour_done');
+  const btn = document.getElementById('tour-btn');
+  if (!done && btn) {
+    btn.classList.add('tour-btn-pulse');
+    // Небольшая задержка — показываем подсказку что есть обучение
+    setTimeout(() => {
+      if (!tourActive) {
+        showToast('💡 Первый раз? Нажмите «?» для обучающего тура', '');
+      }
+    }, 2000);
+  }
+}
+
+function showLoginHelp() {
+  document.getElementById('login-help-modal').classList.add('open');
+}
+function closeLoginHelp() {
+  document.getElementById('login-help-modal').classList.remove('open');
 }
 // ============================================================
 // THEME TOGGLE

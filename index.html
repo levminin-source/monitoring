@@ -243,6 +243,11 @@
         Нет доступа? Обратитесь к юридическому департаменту.<br>
         Ваш департамент и имя определяются автоматически по email.
       </div>
+      <div style="text-align:center;margin-top:16px">
+        <button onclick="showLoginHelp()" style="background:none;border:none;color:var(--accent);font-family:var(--font);font-size:13px;cursor:pointer;text-decoration:underline;padding:0">
+          ❓ Как работать с системой?
+        </button>
+      </div>
     </div>
   </div>
 
@@ -318,6 +323,9 @@
             <input type="text" id="search-input" placeholder="Поиск по изменениям…" oninput="filterSearch(this.value)">
             <span class="search-icon">⌕</span>
           </div>
+          <!-- Tour button -->
+          <button class="tour-btn" id="tour-btn" onclick="startTour()" title="Обучающий тур">?</button>
+
           <!-- Theme toggle -->
           <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Переключить тему">
             <span class="theme-toggle-icon" id="theme-icon">☀</span>
@@ -630,6 +638,59 @@
       </form>
     </div>
   </div>
+
+  <!-- LOGIN HELP MODAL -->
+  <div class="modal-overlay" id="login-help-modal" onclick="closeLoginHelp()">
+    <div class="modal" style="max-width:520px" onclick="event.stopPropagation()">
+      <button class="modal-close" onclick="closeLoginHelp()">×</button>
+      <div class="modal-cat">Справка</div>
+      <div class="modal-title">Как работать с системой</div>
+      <div style="display:flex;flex-direction:column;gap:14px;margin-top:4px">
+        <div class="help-item">
+          <div class="help-num">1</div>
+          <div>
+            <div class="help-title">Войдите с корпоративным email</div>
+            <div class="help-text">Используйте ваш рабочий email @marshall.parts. Пароль выдаёт юридический департамент. Система сама определит ваше имя и департамент.</div>
+          </div>
+        </div>
+        <div class="help-item">
+          <div class="help-num">2</div>
+          <div>
+            <div class="help-title">Читайте изменения и отмечайте ознакомление</div>
+            <div class="help-text">В разделе «Опубликованные» находятся актуальные законы. Откройте карточку → прочитайте → нажмите «✓ Ознакомлен». Это фиксируется и видно руководству.</div>
+          </div>
+        </div>
+        <div class="help-item">
+          <div class="help-num">3</div>
+          <div>
+            <div class="help-title">Задавайте вопросы прямо в системе</div>
+            <div class="help-text">Если что-то непонятно — откройте НПА и выберите тип «⚠ Вопрос / Риск». Юрист увидит вопрос и ответит здесь же.</div>
+          </div>
+        </div>
+        <div class="help-item">
+          <div class="help-num">4</div>
+          <div>
+            <div class="help-title">Красный баннер — действуйте сразу</div>
+            <div class="help-text">Полоска вверху означает, что есть важные изменения, которые вы ещё не читали. Нажмите на неё — система покажет что именно.</div>
+          </div>
+        </div>
+        <div class="help-item">
+          <div class="help-num">5</div>
+          <div>
+            <div class="help-title">После входа пройдите обучающий тур</div>
+            <div class="help-text">Нажмите кнопку «?» в правом верхнем углу — интерактивный тур за 2 минуты покажет все возможности системы.</div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);font-size:12px;color:var(--text-3);text-align:center">
+        По вопросам доступа: обратитесь к юридическому департаменту Marshall
+      </div>
+    </div>
+  </div>
+
+  <!-- TOUR OVERLAY -->
+  <div id="tour-overlay" style="display:none;position:fixed;inset:0;background:rgba(6,14,28,0.7);z-index:300;backdrop-filter:blur(2px)"></div>
+  <div id="tour-popup" class="tour-popup" style="display:none;z-index:301"></div>
 
   <div id="toast" class="toast"></div>
 

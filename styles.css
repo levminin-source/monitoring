@@ -896,3 +896,125 @@ body {
   .search-wrapper input { width: 130px; }
   .search-wrapper input:focus { width: 160px; }
 }
+
+/* =====================
+   MOBILE OVERHAUL
+   ===================== */
+
+/* Overlay за сайдбаром на мобильном */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 9;
+}
+.sidebar-overlay.visible { display: block; }
+
+@media (max-width: 900px) {
+  /* Сайдбар — поверх контента */
+  .sidebar {
+    position: fixed;
+    top: 0; left: 0;
+    height: 100vh;
+    z-index: 10;
+    transform: translateX(0);
+    box-shadow: 4px 0 32px rgba(0,0,0,0.5);
+  }
+  .sidebar.hidden { transform: translateX(-100%); }
+
+  /* Основной контент занимает всю ширину */
+  .main-content { width: 100%; }
+
+  /* Топ-бар */
+  .top-bar { padding: 0 12px; height: 52px; gap: 8px; }
+  .page-title { font-size: 14px; }
+
+  /* Скрываем поиск — оставляем только иконку */
+  .search-wrapper { display: none; }
+
+  /* User chip — компактный */
+  .user-chip { padding: 5px 8px; gap: 6px; }
+  .user-chip-name { max-width: 80px; font-size: 12px; }
+  .user-chip-role { display: none; }
+
+  /* Dashboard */
+  .dashboard-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .stat-number { font-size: 32px; }
+  .dashboard-row { grid-template-columns: 1fr; gap: 12px; }
+  .digest-grid { grid-template-columns: 1fr; gap: 10px; }
+
+  /* Карточки изменений */
+  .change-top { flex-wrap: wrap; gap: 8px; }
+  .change-badges { width: 100%; justify-content: flex-start; }
+  .change-number { font-size: 10px; }
+  .change-title { font-size: 14px; }
+
+  /* Модальное окно */
+  .modal { padding: 20px 16px; margin: 0; border-radius: 12px 12px 0 0; max-height: 95vh; }
+  .modal-overlay { align-items: flex-end; padding: 0; }
+  .modal-grid { grid-template-columns: 1fr; }
+  .modal-title { font-size: 17px; }
+
+  /* Формы */
+  .form-row { grid-template-columns: 1fr; }
+  .comment-form-row { flex-direction: column; }
+  .comment-type-select { width: 100%; }
+
+  /* Вид */
+  .view { padding: 12px; }
+
+  /* Карточки дайджеста */
+  .digest-card { padding: 12px; }
+}
+
+@media (max-width: 480px) {
+  /* Stat карточки — одна колонка на очень маленьких */
+  .dashboard-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat-card { padding: 14px; }
+  .stat-number { font-size: 28px; }
+  .stat-label { font-size: 11px; }
+
+  /* Топ-бар */
+  .top-bar { height: 48px; }
+  .page-title { font-size: 13px; }
+
+  /* Login */
+  .login-card { padding: 24px 20px; margin: 12px; }
+  .login-title { font-size: 18px; }
+
+  /* Urgent items */
+  .urgent-item { flex-wrap: wrap; gap: 6px; }
+  .urgent-date { min-width: auto; }
+
+  /* Badges в карточках */
+  .change-bottom { gap: 6px; }
+  .badge { font-size: 10px; padding: 2px 6px; }
+}
+
+/* Поиск — показываем на мобильном как отдельную строку под топбаром */
+@media (max-width: 900px) {
+  .mobile-search {
+    display: flex;
+    padding: 8px 12px;
+    background: var(--bg-2);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .mobile-search input {
+    flex: 1;
+    background: var(--bg-3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 13px;
+    padding: 8px 12px;
+    outline: none;
+  }
+  .mobile-search input:focus { border-color: var(--accent); }
+  .mobile-search input::placeholder { color: var(--text-3); }
+}
+@media (min-width: 901px) {
+  .mobile-search { display: none; }
+}

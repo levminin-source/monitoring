@@ -4,12 +4,12 @@
 // FIREBASE CONFIG — вставьте свои значения из Firebase Console
 // ============================================================
 const FIREBASE_CONFIG = {
-  apiKey:            "AIzaSyDD_IwbIN87V6VXWqpTKkEV3aEfh8ZQw8k",
-  authDomain:        "marshall-compliance-monitor.firebaseapp.com",
-  projectId:         "marshall-compliance-monitor",
-  storageBucket:     "marshall-compliance-monitor.firebasestorage.app",
-  messagingSenderId: "417137979657",
-  appId:             "1:417137979657:web:936c1706379c270c5c23d8"
+  apiKey:            "YOUR_API_KEY",
+  authDomain:        "YOUR_PROJECT.firebaseapp.com",
+  projectId:         "YOUR_PROJECT_ID",
+  storageBucket:     "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId:             "YOUR_APP_ID"
 };
 
 // ============================================================
@@ -246,6 +246,12 @@ function saveLocalFallback(data) {
 // NAVIGATION
 // ============================================================
 function setView(view) {
+  // Закрываем сайдбар на мобильном при переходе
+  if (window.innerWidth <= 900) {
+    document.getElementById('sidebar').classList.add('hidden');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (overlay) overlay.classList.remove('visible');
+  }
   currentView = view;
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('view-' + view).classList.add('active');
@@ -263,7 +269,10 @@ function setView(view) {
 }
 
 function toggleSidebar() {
-  document.getElementById('sidebar').classList.toggle('hidden');
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  const isHidden = sidebar.classList.toggle('hidden');
+  if (overlay) overlay.classList.toggle('visible', !isHidden);
 }
 
 // ============================================================
@@ -291,7 +300,7 @@ function filterDept(dept) {
 function filterCrit(crit) {
   activeCrit = crit;
   document.querySelectorAll('.crit-btn').forEach(b => {
-    b.classList.toggle('active', b.textContent.trim() === (crit === 'all' ? 'Все' : crit));
+    b.classList.toggle('active', b.dataset.crit === crit);
   });
   renderPublished(); renderDraft(); renderDashboard();
 }

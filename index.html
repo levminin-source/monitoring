@@ -206,6 +206,7 @@
 </head>
 <body>
   <div id="loading-bar"></div>
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
 
   <!-- LOGIN SCREEN -->
   <div id="login-screen" class="visible">
@@ -291,11 +292,11 @@
 
       <div class="sidebar-section-label">Критичность</div>
       <div class="crit-filters">
-        <button class="crit-btn all active" onclick="filterCrit('all')">Все</button>
-        <button class="crit-btn high"   onclick="filterCrit('Высокая')">Высокая</button>
-        <button class="crit-btn medium" onclick="filterCrit('Средняя')">Средняя</button>
-        <button class="crit-btn low"    onclick="filterCrit('Низкая')">Низкая</button>
-        <button class="crit-btn none"   onclick="filterCrit('Отсутствует')">Нет риска</button>
+        <button class="crit-btn all active" onclick="filterCrit('all')" data-crit="all">Все</button>
+        <button class="crit-btn high"   onclick="filterCrit('Высокая')" data-crit="Высокая">Высокая</button>
+        <button class="crit-btn medium" onclick="filterCrit('Средняя')" data-crit="Средняя">Средняя</button>
+        <button class="crit-btn low"    onclick="filterCrit('Низкая')" data-crit="Низкая">Низкая</button>
+        <button class="crit-btn none"   onclick="filterCrit('Отсутствует')" data-crit="Отсутствует">Нет риска</button>
       </div>
 
       <div class="sidebar-bottom">
@@ -328,6 +329,11 @@
           </div>
         </div>
       </header>
+
+      <!-- MOBILE SEARCH -->
+      <div class="mobile-search">
+        <input type="text" placeholder="Поиск по изменениям…" oninput="filterSearch(this.value)">
+      </div>
 
       <!-- DASHBOARD VIEW -->
       <div id="view-dashboard" class="view active">

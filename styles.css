@@ -211,7 +211,7 @@ body {
   font-size: 15px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #fff;
+  color: var(--text);
 }
 .brand-sub {
   font-size: 10px;

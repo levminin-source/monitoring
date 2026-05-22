@@ -32,7 +32,7 @@ const CONFIGURED = FIREBASE_CONFIG.apiKey !== 'YOUR_API_KEY';
 // ADMIN CONFIG — добавьте email юриста-администратора
 // ============================================================
 const ADMIN_EMAILS = [
-  'YOUR_LAWYER_EMAIL@marshall.com'   // ← замените на реальный email
+  'lev.minin@marshall.parts'   // ← замените на реальный email
 ];
 
 function isAdmin() {

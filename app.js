@@ -4,12 +4,12 @@
 // FIREBASE CONFIG — вставьте свои значения из Firebase Console
 // ============================================================
 const FIREBASE_CONFIG = {
-  apiKey:            "YOUR_API_KEY",
-  authDomain:        "YOUR_PROJECT.firebaseapp.com",
-  projectId:         "YOUR_PROJECT_ID",
-  storageBucket:     "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId:             "YOUR_APP_ID"
+  apiKey:            "AIzaSyDD_IwbIN87V6VXWqpTKkEV3aEfh8ZQw8k",
+  authDomain:        "marshall-compliance-monitor.firebaseapp.com",
+  projectId:         "marshall-compliance-monitor",
+  storageBucket:     "marshall-compliance-monitor.firebasestorage.app",
+  messagingSenderId: "417137979657",
+  appId:             "1:417137979657:web:936c1706379c270c5c23d8"
 };
 
 // ============================================================

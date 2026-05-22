@@ -16,11 +16,14 @@ const FIREBASE_CONFIG = {
 // STATE
 // ============================================================
 let currentView  = 'dashboard';
-let currentUser  = '';       // роль/департамент (ДУП, ФЭД…)
-let currentEmail = '';       // email вошедшего пользователя
+let currentUser  = '';
+let currentName  = '';
+let currentEmail = '';
 let activeDept   = 'all';
 let activeCrit   = 'all';
+let activeAck    = 'all';   // all | unread | read
 let searchQuery  = '';
+let searchComments = false; // поиск по комментариям
 
 let store = { comments: {}, acknowledgements: {}, extraChanges: [] };
 let db    = null;
@@ -29,14 +32,68 @@ let auth  = null;
 const CONFIGURED = FIREBASE_CONFIG.apiKey !== 'YOUR_API_KEY';
 
 // ============================================================
-// ADMIN CONFIG — добавьте email юриста-администратора
+// MARSHALL BRAND ASSETS (SVG)
 // ============================================================
-const ADMIN_EMAILS = [
-  'lev.minin@marshall.parts'   // ← замените на реальный email
-];
+const LOGO_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <rect width="100" height="100" fill="#C8102E"/>
+  <g fill="#FFFFFF" font-family="Arial Black, Arial" font-weight="900">
+    <!-- М (top-left) -->
+    <text x="7" y="44" font-size="38">М</text>
+    <!-- З (top-right) -->
+    <text x="53" y="44" font-size="38">З</text>
+    <!-- Э (bottom-left) -->
+    <text x="7" y="88" font-size="38">Э</text>
+    <!-- W (bottom-right) -->
+    <text x="53" y="88" font-size="38">W</text>
+  </g>
+</svg>`;
+
+const LOGO_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80">
+  <!-- Красный квадрат -->
+  <rect x="0" y="0" width="80" height="80" fill="#C8102E"/>
+  <g fill="#FFFFFF" font-family="Arial Black, Arial" font-weight="900">
+    <text x="5" y="35" font-size="30">М</text>
+    <text x="43" y="35" font-size="30">З</text>
+    <text x="5" y="70" font-size="30">Э</text>
+    <text x="43" y="70" font-size="30">W</text>
+  </g>
+  <!-- MARSHALL текст -->
+  <text x="96" y="57" font-family="Arial Black, Arial" font-weight="900"
+        font-size="42" fill="#0D1E34" letter-spacing="2">MARSHALL</text>
+</svg>`;
+
+
+
+// ============================================================
+// ПОЛЬЗОВАТЕЛИ — email → имя, департамент, роль
+// Добавляйте новых сотрудников сюда
+// ============================================================
+const USERS = {
+  'lev.minin@marshall.parts':           { name: 'Лев Минин',             dept: 'Юрист',  role: 'admin' },
+  'dinara.gumbatova@marshall.parts':    { name: 'Динара Гумбатова',      dept: 'Юрист',  role: 'admin' },
+  'margarita.kaplina@marshall.parts':   { name: 'Маргарита Каплина',     dept: 'Юрист',  role: 'admin' },
+  // ── Сотрудники — добавляйте по образцу ──
+  // 'ivan.ivanov@marshall.parts':      { name: 'Иван Иванов',           dept: 'ФЭД',    role: 'user'  },
+  // 'anna.petrova@marshall.parts':     { name: 'Анна Петрова',          dept: 'КД',     role: 'user'  },
+  // 'oleg.sidorov@marshall.parts':     { name: 'Олег Сидоров',          dept: 'ДУП',    role: 'user'  },
+  // 'maria.kozlova@marshall.parts':    { name: 'Мария Козлова',         dept: 'ДМ',     role: 'user'  },
+  // 'dmitry.novikov@marshall.parts':   { name: 'Дмитрий Новиков',       dept: 'ОД',     role: 'user'  },
+  // 'elena.smirnova@marshall.parts':   { name: 'Елена Смирнова',        dept: 'ДЦТ',    role: 'user'  },
+};
+
+// Доступные департаменты
+const DEPARTMENTS = ['ФЭД', 'ДМ', 'ОД', 'КД', 'ДЦТ', 'ДУП'];
+
+const ADMIN_EMAILS = Object.entries(USERS)
+  .filter(([, u]) => u.role === 'admin')
+  .map(([email]) => email);
 
 function isAdmin() {
   return ADMIN_EMAILS.includes(currentEmail);
+}
+
+function getUserInfo(email) {
+  return USERS[email] || { name: email, dept: '—', role: 'user' };
 }
 
 // ============================================================
@@ -50,11 +107,10 @@ function initFirebase() {
   // Следим за состоянием авторизации
   auth.onAuthStateChanged(user => {
     if (user) {
-      // Пользователь вошёл — показываем приложение
       currentEmail = user.email;
-      // Восстанавливаем роль из sessionStorage (если была выбрана)
-      const savedRole = sessionStorage.getItem('compliance_role') || '';
-      currentUser = savedRole;
+      const info   = getUserInfo(user.email);
+      currentUser  = info.dept;
+      currentName  = info.name;
       showApp();
       startFirestoreListener();
     } else {
@@ -114,7 +170,6 @@ async function saveToCloud() {
 async function submitLogin() {
   const email    = document.getElementById('login-email').value.trim();
   const password = document.getElementById('login-password').value;
-  const role     = document.getElementById('login-role').value;
   const btn      = document.getElementById('login-btn');
   const errEl    = document.getElementById('login-error');
 
@@ -124,19 +179,16 @@ async function submitLogin() {
     showLoginError('Введите email и пароль.');
     return;
   }
-  if (!role) {
-    showLoginError('Выберите ваш департамент / роль.');
-    return;
-  }
 
   btn.disabled    = true;
   btn.textContent = 'Вход…';
 
   if (!CONFIGURED) {
-    // Демо-режим без Firebase: любой email/пароль
+    // Демо-режим
+    const info   = getUserInfo(email);
     currentEmail = email;
-    currentUser  = role;
-    sessionStorage.setItem('compliance_role', role);
+    currentUser  = info.dept;
+    currentName  = info.name;
     store = loadLocalFallback();
     showApp();
     refreshUI();
@@ -148,17 +200,15 @@ async function submitLogin() {
 
   try {
     await auth.signInWithEmailAndPassword(email, password);
-    // После входа onAuthStateChanged сам вызовет showApp()
-    currentUser = role;
-    sessionStorage.setItem('compliance_role', role);
+    // onAuthStateChanged сам вызовет showApp()
   } catch(e) {
     btn.disabled    = false;
     btn.textContent = 'Войти';
     const msgs = {
-      'auth/user-not-found':   'Пользователь с таким email не найден.',
-      'auth/wrong-password':   'Неверный пароль.',
-      'auth/invalid-email':    'Некорректный формат email.',
-      'auth/too-many-requests':'Слишком много попыток. Попробуйте позже.',
+      'auth/user-not-found':     'Пользователь с таким email не найден.',
+      'auth/wrong-password':     'Неверный пароль.',
+      'auth/invalid-email':      'Некорректный формат email.',
+      'auth/too-many-requests':  'Слишком много попыток. Попробуйте позже.',
       'auth/invalid-credential': 'Неверный email или пароль.'
     };
     showLoginError(msgs[e.code] || 'Ошибка входа. Проверьте данные.');
@@ -201,10 +251,11 @@ function showApp() {
   }
 
   // Заполняем chip пользователя в шапке
-  const initials = currentEmail ? currentEmail[0].toUpperCase() : '?';
+  const displayName = currentName || currentEmail || 'Пользователь';
+  const initials    = displayName.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
   document.getElementById('user-chip-avatar').textContent = initials;
-  document.getElementById('user-chip-name').textContent   = currentEmail || 'Пользователь';
-  document.getElementById('user-chip-role').textContent   = currentUser  || '—';
+  document.getElementById('user-chip-name').textContent   = displayName;
+  document.getElementById('user-chip-role').textContent   = currentUser || '—';
 
   // Инициализируем форму (если ещё не было)
   const typeSelect = document.querySelector('[name="type"]');
@@ -223,6 +274,32 @@ function showApp() {
   if (adminNav)   adminNav.style.display   = isAdmin() ? 'flex'  : 'none';
   if (adminBtn)   adminBtn.style.display   = isAdmin() ? 'block' : 'none';
   if (proposeBtn) proposeBtn.style.display = isAdmin() ? 'none'  : 'block';
+
+  // Показываем баннер обязательного ознакомления
+  setTimeout(showAckBanner, 800);
+}
+
+function showAckBanner() {
+  if (!currentUser) return;
+  const unread = [...PUBLISHED_CHANGES, ...store.extraChanges.filter(c=>c.type==='published')]
+    .filter(c => (c.criticality === 'Высокая' || c.criticality === 'Средняя') &&
+                  !isAcknowledgedByUser(c.id, currentUser));
+  const banner = document.getElementById('ack-banner');
+  if (!banner) return;
+  if (unread.length > 0) {
+    banner.innerHTML = `<span class="ack-banner-icon">⚠</span>
+      <span>У вас <strong>${unread.length}</strong> важных изменений, требующих ознакомления</span>
+      <button onclick="filterAck('unread');setView('published');closeBanner()" class="ack-banner-btn">
+        Перейти к списку
+      </button>
+      <button onclick="closeBanner()" class="ack-banner-close">×</button>`;
+    banner.classList.add('visible');
+  }
+}
+
+function closeBanner() {
+  const b = document.getElementById('ack-banner');
+  if (b) b.classList.remove('visible');
 }
 
 // ============================================================
@@ -312,13 +389,13 @@ function toggleSidebar() {
 // FILTERS
 // ============================================================
 function buildDeptFilters() {
-  const all   = getAllChanges().flatMap(c => c.departments);
-  // Исключаем 'Все' из списка — это служебное значение, не департамент
-  const depts = [...new Set(all)].filter(d => d !== 'Все').sort();
+  // Фиксированный список департаментов + те что есть в данных
+  const fromData = getAllChanges().flatMap(c => c.departments);
+  const allDepts = [...new Set([...DEPARTMENTS, ...fromData])].filter(d => d !== 'Все').sort();
   const container = document.getElementById('dept-filters');
   if (!container) return;
   container.innerHTML = `<button class="dept-btn active" data-dept="all" onclick="filterDept('all')">Все</button>`;
-  depts.forEach(d => {
+  allDepts.forEach(d => {
     container.innerHTML += `<button class="dept-btn" data-dept="${d}" onclick="filterDept('${d}')">${d}</button>`;
   });
 }
@@ -342,17 +419,50 @@ function filterCrit(crit) {
 function filterSearch(q) {
   searchQuery = q.toLowerCase();
   renderPublished(); renderDraft();
+  if (searchComments) renderAllComments();
+}
+
+function toggleSearchComments(el) {
+  searchComments = el.checked;
+  renderPublished(); renderDraft();
+  if (currentView === 'comments') renderAllComments();
+}
+
+function filterAck(val) {
+  activeAck = val;
+  document.querySelectorAll('.ack-filter-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.ack === val);
+  });
+  renderPublished();
 }
 
 function applyFilters(changes) {
   return changes.filter(c => {
-    const deptOk   = activeDept === 'all' || c.departments.some(d => d === activeDept || d === 'Все');
-    const critOk   = activeCrit === 'all' || c.criticality === activeCrit;
-    const searchOk = !searchQuery ||
-      c.title.toLowerCase().includes(searchQuery) ||
-      c.summary.toLowerCase().includes(searchQuery) ||
-      c.category.toLowerCase().includes(searchQuery);
-    return deptOk && critOk && searchOk;
+    const deptOk = activeDept === 'all' || c.departments.some(d => d === activeDept || d === 'Все');
+    const critOk = activeCrit === 'all' || c.criticality === activeCrit;
+
+    // Фильтр по ознакомлению
+    let ackOk = true;
+    if (activeAck === 'unread') ackOk = !currentUser || !isAcknowledgedByUser(c.id, currentUser);
+    if (activeAck === 'read')   ackOk = currentUser  &&  isAcknowledgedByUser(c.id, currentUser);
+
+    // Поиск — по НПА и опционально по комментариям
+    let searchOk = !searchQuery;
+    if (searchQuery) {
+      searchOk = c.title.toLowerCase().includes(searchQuery) ||
+                 c.summary.toLowerCase().includes(searchQuery) ||
+                 c.category.toLowerCase().includes(searchQuery) ||
+                 (c.normAct||'').toLowerCase().includes(searchQuery);
+      if (!searchOk && searchComments) {
+        const cmts = getComments(c.id);
+        searchOk = cmts.some(cm =>
+          (cm.text||'').toLowerCase().includes(searchQuery) ||
+          (cm.author||'').toLowerCase().includes(searchQuery)
+        );
+      }
+    }
+
+    return deptOk && critOk && ackOk && searchOk;
   });
 }
 
@@ -463,17 +573,31 @@ function renderDraft() {
     : `<div class="empty-state"><div class="icon">◎</div><p>Нет проектных изменений</p></div>`;
 }
 
+function deadlineIndicator(effectiveDate) {
+  if (!effectiveDate || effectiveDate === '—') return '';
+  const d = new Date(effectiveDate);
+  if (isNaN(d)) return '';
+  const days = Math.ceil((d - new Date()) / 86400000);
+  if (days < 0)   return '<span class="deadline-badge deadline-past">истёк</span>';
+  if (days <= 30)  return `<span class="deadline-badge deadline-urgent">⚡ ${days} дн.</span>`;
+  if (days <= 90)  return `<span class="deadline-badge deadline-soon">⏱ ${days} дн.</span>`;
+  return `<span class="deadline-badge deadline-ok">✓ ${days} дн.</span>`;
+}
+
 function changeCard(c, isDraft) {
   const cc    = critClass(c.criticality || '');
   const acked = currentUser && isAcknowledgedByUser(c.id, currentUser);
   const cnt   = commentCount(c.id);
   const depts = (c.departments || []).map(d => `<span class="badge badge-dept">${d}</span>`).join('');
-  return `<div class="change-card${acked ? ' acknowledged' : ''}" onclick="openChange('${c.id}')">
+  const urgent = c.urgent ? '<span class="badge-urgent">🔴 СРОЧНО</span>' : '';
+  const ddl   = !isDraft ? deadlineIndicator(c.effectiveDate) : '';
+
+  return `<div class="change-card${acked ? ' acknowledged' : ''}${c.urgent ? ' urgent-card' : ''}" onclick="openChange('${c.id}')">
     <div class="change-top">
       <span class="change-number">#${c.num || '—'}</span>
       <div class="change-title-group">
         <div class="change-category">${c.category}</div>
-        <div class="change-title">${c.title}</div>
+        <div class="change-title">${urgent}${c.title}</div>
       </div>
       <div class="change-badges">
         ${c.criticality ? `<span class="badge badge-${cc}">${c.criticality}</span>` : ''}
@@ -485,8 +609,9 @@ function changeCard(c, isDraft) {
     <div class="change-summary">${c.summary}</div>
     <div class="change-bottom">
       ${depts}
-      ${c.effectiveDate ? `<span class="change-date">Вступает: ${formatDate(c.effectiveDate)}</span>` : ''}
+      ${!isDraft && c.effectiveDate ? `<span class="change-date">Вступает: ${formatDate(c.effectiveDate)}</span>` : ''}
       ${isDraft && c.plannedDate ? `<span class="change-date">Планируется: ${c.plannedDate}</span>` : ''}
+      ${ddl}
       ${cnt > 0 ? `<span class="change-comments-count">💬 ${cnt}</span>` : ''}
     </div>
   </div>`;
@@ -616,7 +741,8 @@ async function submitComment(id) {
                   now.toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' });
 
   store.comments[id].push({
-    author: currentUser,
+    author: currentName || currentUser || currentEmail,
+    dept:   currentUser,
     email:  currentEmail,
     type, text, time: timeStr
   });
@@ -680,7 +806,8 @@ async function submitNewChange(e) {
   const type = fd.get('type');
   const id   = type + '-extra-' + Date.now();
 
-  store.extraChanges.push({
+  const sendNotify = fd.get('send_notify') === 'on';
+  const newEntry = {
     id, num: getAllChanges().length + 1, type,
     category:      fd.get('category'),
     title:         fd.get('category').split('/')[0].trim() + ': ' + fd.get('summary').substring(0,60) + '…',
@@ -695,14 +822,19 @@ async function submitNewChange(e) {
     departments:   fd.get('departments').split(',').map(d => d.trim()).filter(Boolean),
     status:        fd.get('status'),
     probability:   fd.get('probability') || null,
-    plannedDate:   fd.get('effective_date') || null
-  });
+    plannedDate:   fd.get('effective_date') || null,
+    urgent:        fd.get('urgent') === 'on'
+  };
 
+  store.extraChanges.push(newEntry);
   await saveToCloud();
+
+  if (sendNotify) sendEmailNotification(newEntry);
+
   closeAdmin();
   e.target.reset();
   if (!CONFIGURED) { buildDeptFilters(); renderPublished(); renderDraft(); renderDashboard(); }
-  showToast('✓ Изменение добавлено', 'success');
+  showToast(sendNotify ? '✓ Изменение добавлено, уведомления отправлены' : '✓ Изменение добавлено', 'success');
 }
 
 // ============================================================
@@ -812,7 +944,16 @@ function exportWord() {
     .subtitle { text-align: center; font-size: 12pt; color: #3D5A78; }
     .center { text-align: center; }
   </style></head><body>
-  <h1>MARSHALL</h1>
+  <div style="text-align:center;margin-bottom:12pt">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 72" style="width:240pt;height:auto">
+      <rect x="0" y="0" width="72" height="72" fill="#C8102E"/>
+      <text x="4"  y="40" font-family="Arial Black,Arial" font-weight="900" font-size="34" fill="#fff">М</text>
+      <text x="38" y="40" font-family="Arial Black,Arial" font-weight="900" font-size="34" fill="#fff">З</text>
+      <text x="4"  y="72" font-family="Arial Black,Arial" font-weight="900" font-size="34" fill="#fff">Э</text>
+      <text x="38" y="72" font-family="Arial Black,Arial" font-weight="900" font-size="34" fill="#fff">W</text>
+      <text x="84" y="53" font-family="Arial Black,Arial" font-weight="900" font-size="46" fill="#0D1E34" letter-spacing="1">MARSHALL</text>
+    </svg>
+  </div>
   <p class="subtitle"><b>МОНИТОРИНГ ИЗМЕНЕНИЙ ЗАКОНОДАТЕЛЬСТВА</b></p>
   <p class="subtitle">${QUARTER} &nbsp;·&nbsp; Дата формирования: ${date}</p>
   <br>
@@ -916,7 +1057,16 @@ function exportPDF() {
               display: flex; justify-content: space-between; font-size: 7.5pt; color: #8AA0B8; }
   </style></head><body>
   <div class="cover">
-    <div class="cover-logo">MARSHALL</div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:16pt;margin-bottom:10pt">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" style="width:56pt;height:56pt;flex-shrink:0">
+        <rect width="100" height="100" fill="#C8102E"/>
+        <text x="6"  y="46" font-family="Arial Black,Arial" font-weight="900" font-size="40" fill="#fff">М</text>
+        <text x="52" y="46" font-family="Arial Black,Arial" font-weight="900" font-size="40" fill="#fff">З</text>
+        <text x="6"  y="90" font-family="Arial Black,Arial" font-weight="900" font-size="40" fill="#fff">Э</text>
+        <text x="52" y="90" font-family="Arial Black,Arial" font-weight="900" font-size="40" fill="#fff">W</text>
+      </svg>
+      <div class="cover-logo">MARSHALL</div>
+    </div>
     <div class="cover-title">МОНИТОРИНГ ИЗМЕНЕНИЙ ЗАКОНОДАТЕЛЬСТВА</div>
     <div class="cover-sub">${QUARTER} &nbsp;·&nbsp; Дата формирования: ${date}</div>
   </div>
@@ -1138,6 +1288,7 @@ async function saveEdit(e, id) {
     deadline:      fd.get('deadline'),
     departments:   fd.get('departments').split(',').map(d => d.trim()).filter(Boolean),
     probability:   fd.get('probability') || null,
+    urgent:        fd.get('urgent') === 'on',
   };
 
   if (idx !== -1) {
@@ -1282,6 +1433,56 @@ async function rejectProposal(id) {
   const p = (store.proposals||[]).find(x => x.id === id);
   if (p) { p.status = 'rejected'; await saveToCloud(); renderProposals(); }
   showToast('Предложение отклонено', '');
+}
+
+// ============================================================
+// EMAIL NOTIFICATIONS (EmailJS)
+// Настройте на emailjs.com: Service ID, Template ID, Public Key
+// ============================================================
+const EMAILJS_SERVICE_ID  = 'YOUR_SERVICE_ID';   // ← из EmailJS
+const EMAILJS_TEMPLATE_ID = 'YOUR_TEMPLATE_ID';  // ← из EmailJS
+const EMAILJS_PUBLIC_KEY  = 'YOUR_PUBLIC_KEY';   // ← из EmailJS
+
+function sendEmailNotification(entry) {
+  if (EMAILJS_SERVICE_ID === 'YOUR_SERVICE_ID') {
+    console.warn('EmailJS не настроен — уведомления не отправлены');
+    return;
+  }
+  // Загружаем SDK EmailJS если ещё не загружен
+  if (typeof emailjs === 'undefined') {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js';
+    s.onload = () => {
+      emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+      _doSendEmail(entry);
+    };
+    document.head.appendChild(s);
+  } else {
+    _doSendEmail(entry);
+  }
+}
+
+function _doSendEmail(entry) {
+  const depts = (entry.departments || []).join(', ');
+  // Собираем email-адреса получателей из USERS по департаментам
+  const recipients = Object.entries(USERS)
+    .filter(([, u]) => entry.departments.includes(u.dept) || entry.departments.includes('Все'))
+    .map(([email, u]) => ({ email, name: u.name }));
+
+  recipients.forEach(r => {
+    emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+      to_email:    r.email,
+      to_name:     r.name,
+      title:       entry.title,
+      category:    entry.category,
+      criticality: entry.criticality || '—',
+      summary:     entry.summary,
+      effective:   entry.effectiveDate || entry.plannedDate || '—',
+      dept:        depts,
+      from_name:   currentName || 'Юридический департамент Marshall',
+      site_url:    window.location.origin + window.location.pathname
+    }).catch(e => console.warn('EmailJS error:', e));
+  });
 }
 // ============================================================
 // THEME TOGGLE

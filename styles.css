@@ -1390,3 +1390,169 @@ body {
 [data-theme="light"] .proposal-title { color: var(--text); }
 [data-theme="light"] .proposal-meta  { color: var(--text-3); }
 [data-theme="light"] .export-fmt-title { color: var(--text); }
+
+/* =====================
+   BRAND LOGO SVG
+   ===================== */
+.brand-logo-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.brand-logo-icon {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 4px;
+}
+.login-logo-svg {
+  width: 220px;
+  height: auto;
+  display: block;
+  margin-bottom: 4px;
+}
+[data-theme="light"] .login-logo-svg text[fill="#0D1E34"] {
+  fill: #0D1E34;
+}
+
+/* =====================
+   ACK BANNER
+   ===================== */
+.ack-banner {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  background: linear-gradient(90deg, #C8102E, #a50d25);
+  color: #fff;
+  z-index: 50;
+  padding: 12px 20px;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 2px 12px rgba(200,16,46,0.4);
+  animation: slideDown 0.3s ease;
+}
+.ack-banner.visible { display: flex; }
+@keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+.ack-banner-icon { font-size: 18px; flex-shrink: 0; }
+.ack-banner-btn {
+  margin-left: auto;
+  padding: 5px 14px;
+  background: rgba(255,255,255,0.2);
+  border: 1px solid rgba(255,255,255,0.4);
+  border-radius: 4px;
+  color: #fff;
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.ack-banner-btn:hover { background: rgba(255,255,255,0.35); }
+.ack-banner-close {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.7);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0 4px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.ack-banner-close:hover { color: #fff; }
+
+/* =====================
+   ACK FILTER BAR
+   ===================== */
+.ack-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.ack-filter-label {
+  font-size: 12px;
+  color: var(--text-3);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-right: 2px;
+}
+.ack-filter-btn {
+  padding: 5px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-2);
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.ack-filter-btn:hover { border-color: var(--accent); color: var(--accent); }
+.ack-filter-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.search-comments-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-2);
+  cursor: pointer;
+  margin-left: 8px;
+}
+.search-comments-toggle input { cursor: pointer; }
+
+/* =====================
+   DEADLINE BADGES
+   ===================== */
+.deadline-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--mono);
+  flex-shrink: 0;
+}
+.deadline-urgent { background: var(--high-bg);   color: var(--high);   border: 1px solid rgba(232,41,74,0.3); }
+.deadline-soon   { background: var(--medium-bg); color: var(--medium); border: 1px solid rgba(212,130,10,0.3); }
+.deadline-ok     { background: var(--low-bg);    color: var(--low);    border: 1px solid rgba(39,174,96,0.3); }
+.deadline-past   { background: var(--bg-4);      color: var(--text-3); border: 1px solid var(--border); }
+
+/* =====================
+   URGENT TAG
+   ===================== */
+.badge-urgent {
+  display: inline-flex;
+  align-items: center;
+  background: var(--accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 900;
+  padding: 2px 8px;
+  border-radius: 3px;
+  letter-spacing: 0.08em;
+  margin-right: 6px;
+  vertical-align: middle;
+  animation: urgentPulse 2s ease infinite;
+}
+@keyframes urgentPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.7; }
+}
+.urgent-card {
+  border-left-color: var(--accent) !important;
+  box-shadow: 0 0 0 1px rgba(200,16,46,0.2);
+}
+
+/* Light theme */
+[data-theme="light"] .ack-filter-btn { color: var(--text-2); }
+[data-theme="light"] .ack-filter-btn.active { color: #fff; }
+[data-theme="light"] .search-comments-toggle { color: var(--text-2); }
+[data-theme="light"] .deadline-badge { }

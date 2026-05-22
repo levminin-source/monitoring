@@ -214,20 +214,24 @@
 </head>
 <body>
   <div id="loading-bar"></div>
+  <div class="ack-banner" id="ack-banner"></div>
   <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
 
   <!-- LOGIN SCREEN -->
   <div id="login-screen" class="visible">
     <div class="login-card">
       <div class="login-brand">
-        <div class="login-brand-icon">МЗ</div>
-        <div class="login-brand-text">
-          <span class="login-brand-name">Marshall</span>
-          <span class="login-brand-sub">Compliance Monitor</span>
-        </div>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 72" class="login-logo-svg">
+          <rect x="0" y="0" width="72" height="72" fill="#C8102E"/>
+          <text x="4"  y="40" font-family="Arial Black,Arial" font-weight="900" font-size="34" fill="#fff">М</text>
+          <text x="38" y="40" font-family="Arial Black,Arial" font-weight="900" font-size="34" fill="#fff">З</text>
+          <text x="4"  y="72" font-family="Arial Black,Arial" font-weight="900" font-size="34" fill="#fff">Э</text>
+          <text x="38" y="72" font-family="Arial Black,Arial" font-weight="900" font-size="34" fill="#fff">W</text>
+          <text x="84" y="53" font-family="Arial Black,Arial" font-weight="900" font-size="46" fill="#0D1E34" letter-spacing="1">MARSHALL</text>
+        </svg>
       </div>
       <div class="login-title">Вход в систему</div>
-      <div class="login-subtitle">Доступ только для сотрудников компании.<br>Введите ваши учётные данные.</div>
+      <div class="login-subtitle">Доступ только для сотрудников компании Marshall.<br>Введите корпоративный email и пароль.</div>
 
       <div class="login-field">
         <label>Email</label>
@@ -238,25 +242,13 @@
         <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password"
                onkeydown="if(event.key==='Enter') submitLogin()">
       </div>
-      <div class="login-role-field">
-        <label>Ваш департамент / роль</label>
-        <select id="login-role">
-          <option value="">— Выберите роль —</option>
-          <option value="ДУП">ДУП</option>
-          <option value="ФЭД">ФЭД</option>
-          <option value="КД">КД</option>
-          <option value="ДЛ">ДЛ</option>
-          <option value="Юрист">Юрист</option>
-          <option value="Руководство">Руководство</option>
-        </select>
-      </div>
 
       <button class="login-btn" id="login-btn" onclick="submitLogin()">Войти</button>
       <div class="login-error" id="login-error"></div>
 
       <div class="login-footer">
         Нет доступа? Обратитесь к юридическому департаменту.<br>
-        Аккаунты создаются администратором в Firebase Console.
+        Ваш департамент и имя определяются автоматически по email.
       </div>
     </div>
   </div>
@@ -266,10 +258,18 @@
     <!-- SIDEBAR -->
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-brand">
-        <div class="brand-icon">МЗ</div>
-        <div class="brand-text">
-          <span class="brand-name">Marshall</span>
-          <span class="brand-sub">Compliance Monitor</span>
+        <div class="brand-logo-wrap">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="brand-logo-icon">
+            <rect width="100" height="100" fill="#C8102E"/>
+            <text x="6"  y="46" font-family="Arial Black,Arial" font-weight="900" font-size="40" fill="#fff">М</text>
+            <text x="52" y="46" font-family="Arial Black,Arial" font-weight="900" font-size="40" fill="#fff">З</text>
+            <text x="6"  y="90" font-family="Arial Black,Arial" font-weight="900" font-size="40" fill="#fff">Э</text>
+            <text x="52" y="90" font-family="Arial Black,Arial" font-weight="900" font-size="40" fill="#fff">W</text>
+          </svg>
+          <div class="brand-text">
+            <span class="brand-name">MARSHALL</span>
+            <span class="brand-sub">Compliance Monitor</span>
+          </div>
         </div>
       </div>
 
@@ -405,6 +405,15 @@
 
       <!-- PUBLISHED VIEW -->
       <div id="view-published" class="view">
+        <div class="ack-filter-bar">
+          <span class="ack-filter-label">Ознакомление:</span>
+          <button class="ack-filter-btn active" data-ack="all"    onclick="filterAck('all')">Все</button>
+          <button class="ack-filter-btn"         data-ack="unread" onclick="filterAck('unread')">Не ознакомлен</button>
+          <button class="ack-filter-btn"         data-ack="read"   onclick="filterAck('read')">Ознакомлен</button>
+          <label class="search-comments-toggle">
+            <input type="checkbox" onchange="toggleSearchComments(this)"> Искать в комментариях
+          </label>
+        </div>
         <div class="changes-list" id="list-published"></div>
       </div>
 
@@ -542,6 +551,20 @@
         <div class="form-group" id="draft-fields" style="display:none">
           <label>Вероятность принятия</label>
           <input name="probability" type="text" placeholder="60–70%">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+              <input type="checkbox" name="urgent" style="width:16px;height:16px;accent-color:#C8102E">
+              Пометить как СРОЧНО
+            </label>
+          </div>
+          <div class="form-group">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+              <input type="checkbox" name="send_notify" checked style="width:16px;height:16px;accent-color:#C8102E">
+              Разослать email-уведомления
+            </label>
+          </div>
         </div>
         <div class="form-actions">
           <button type="button" class="btn-secondary" onclick="closeAdmin()">Отмена</button>

@@ -355,7 +355,7 @@ function setView(view) {
   };
   document.getElementById('page-title').textContent = titles[view] || '';
   if (view === 'comments')      renderAllComments();
-  if (view === 'admin-editor')  renderEditor();
+  if (view === 'admin-editor')  setAdminTab('editor');
 }
 
 function toggleSidebar() {
@@ -1147,15 +1147,10 @@ function renderEditor() {
       ${allDft.map(c => editorCard(c)).join('')}
     </div>`;
 
-  // Показываем блок предложений
-  const propCard = document.getElementById('proposals-card');
+  // Обновляем бейдж предложений
   const newProps = (store.proposals||[]).filter(p => p.status === 'new').length;
-  if (propCard) {
-    propCard.style.display = 'block';
-    const h3 = propCard.querySelector('h3');
-    if (h3) h3.textContent = `Входящие предложения от сотрудников${newProps ? ' (' + newProps + ' новых)' : ''}`;
-  }
-  renderProposals();
+  const badge = document.getElementById('proposals-badge');
+  if (badge) badge.textContent = newProps > 0 ? newProps : '';
 }
 
 function editorCard(c) {
@@ -1315,6 +1310,275 @@ function closeEditModal() {
 }
 
 
+
+// ============================================================
+// ANALYTICS & RISK MATRIX (только для администраторов)
+// ============================================================
+
+function renderAnalytics() {
+  if (!isAdmin()) return;
+
+  const pub = getAllChanges().filter(c => !c.type || c.type === 'published');
+  const dft = getAllChanges().filter(c => c.type === 'draft' || DRAFT_CHANGES.some(d=>d.id===c.id));
+  const all = getAllChanges();
+
+  // ── Статистика ──
+  const totalComments = Object.values(store.comments).flat().length;
+  const totalAcks = Object.values(store.comments).flat().filter(c=>c.type==='ack').length;
+  const totalIssues = Object.values(store.comments).flat().filter(c=>c.type==='issue').length;
+
+  // % ознакомления по всем департаментам
+  let totalRequired = 0, totalDone = 0;
+  pub.forEach(c => {
+    (c.departments||[]).filter(d=>d!=='Все').forEach(d => {
+      totalRequired++;
+      if (getAck(c.id)[d]) totalDone++;
+    });
+  });
+  const ackPct = totalRequired ? Math.round(totalDone/totalRequired*100) : 0;
+
+  // По критичности
+  const critCount = {Высокая:0, Средняя:0, Низкая:0, Отсутствует:0};
+  pub.forEach(c => { if (critCount[c.criticality]!==undefined) critCount[c.criticality]++; });
+
+  // По департаментам
+  const deptCount = {};
+  DEPARTMENTS.forEach(d => { deptCount[d] = 0; });
+  pub.forEach(c => (c.departments||[]).forEach(d => { if (deptCount[d]!==undefined) deptCount[d]++; }));
+
+  // Ближайшие дедлайны
+  const upcoming = pub
+    .filter(c => c.effectiveDate)
+    .map(c => ({ ...c, daysLeft: Math.ceil((new Date(c.effectiveDate)-new Date())/86400000) }))
+    .filter(c => c.daysLeft >= 0)
+    .sort((a,b) => a.daysLeft - b.daysLeft)
+    .slice(0, 5);
+
+  const container = document.getElementById('analytics-content');
+  if (!container) return;
+
+  container.innerHTML = `
+    <!-- KPI ряд -->
+    <div class="an-kpi-row">
+      <div class="an-kpi">
+        <div class="an-kpi-num">${pub.length}</div>
+        <div class="an-kpi-label">Опубликованных НПА</div>
+      </div>
+      <div class="an-kpi">
+        <div class="an-kpi-num">${dft.length}</div>
+        <div class="an-kpi-label">Проектных НПА</div>
+      </div>
+      <div class="an-kpi an-kpi-accent">
+        <div class="an-kpi-num">${ackPct}%</div>
+        <div class="an-kpi-label">Общий % ознакомления</div>
+      </div>
+      <div class="an-kpi">
+        <div class="an-kpi-num">${totalComments}</div>
+        <div class="an-kpi-label">Комментариев</div>
+      </div>
+      <div class="an-kpi ${totalIssues>0?'an-kpi-warn':''}">
+        <div class="an-kpi-num">${totalIssues}</div>
+        <div class="an-kpi-label">Открытых вопросов</div>
+      </div>
+    </div>
+
+    <div class="an-grid-2">
+      <!-- Критичность -->
+      <div class="card">
+        <div class="card-header"><h3>По критичности</h3><span class="card-hint">опубликованные</span></div>
+        <div class="an-bars">
+          ${Object.entries(critCount).map(([k,v]) => {
+            const pct = pub.length ? Math.round(v/pub.length*100) : 0;
+            const cls = {Высокая:'high',Средняя:'medium',Низкая:'low',Отсутствует:'none'}[k]||'low';
+            return `<div class="an-bar-row">
+              <span class="an-bar-label">${k}</span>
+              <div class="an-bar-track">
+                <div class="an-bar-fill an-bar-${cls}" style="width:${pct}%"></div>
+              </div>
+              <span class="an-bar-val">${v}</span>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+
+      <!-- По департаментам -->
+      <div class="card">
+        <div class="card-header"><h3>Нагрузка по департаментам</h3><span class="card-hint">кол-во НПА</span></div>
+        <div class="an-bars">
+          ${Object.entries(deptCount).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([d,v]) => {
+            const pct = pub.length ? Math.round(v/pub.length*100) : 0;
+            const ackP = deptAckPct(d);
+            return `<div class="an-bar-row">
+              <span class="an-bar-label">${d}</span>
+              <div class="an-bar-track">
+                <div class="an-bar-fill an-bar-dept" style="width:${pct}%"></div>
+              </div>
+              <span class="an-bar-val">${v} НПА · ${ackP}% озн.</span>
+            </div>`;
+          }).join('') || '<div style="color:var(--text-3);font-size:13px">Нет данных</div>'}
+        </div>
+      </div>
+    </div>
+
+    <!-- Ознакомление по департаментам детально -->
+    <div class="card">
+      <div class="card-header"><h3>Детальный статус ознакомления</h3><span class="card-hint">по НПА и департаментам</span></div>
+      <div class="an-ack-table-wrap">
+        <table class="an-ack-table">
+          <thead>
+            <tr>
+              <th>НПА</th>
+              ${DEPARTMENTS.map(d=>`<th>${d}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${pub.map(c => `<tr>
+              <td class="an-npa-cell" onclick="openChange('${c.id}')">#${c.num} ${c.title.substring(0,50)}…</td>
+              ${DEPARTMENTS.map(d => {
+                const relevant = (c.departments||[]).some(cd=>cd===d||cd==='Все');
+                if (!relevant) return '<td class="an-cell-na">—</td>';
+                const acked = getAck(c.id)[d];
+                return `<td class="an-cell-${acked?'ok':'pending'}">${acked?'✓':'○'}</td>`;
+              }).join('')}
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Ближайшие дедлайны -->
+    <div class="card">
+      <div class="card-header"><h3>Ближайшие дедлайны</h3><span class="card-hint">топ-5</span></div>
+      <div class="an-deadlines">
+        ${upcoming.length ? upcoming.map(c => {
+          const cls = c.daysLeft<=30?'urgent':c.daysLeft<=90?'soon':'ok';
+          return `<div class="an-deadline-item" onclick="openChange('${c.id}')">
+            <div class="deadline-badge deadline-${cls}">${c.daysLeft} дн.</div>
+            <div class="an-deadline-text">
+              <div class="an-deadline-title">${c.title}</div>
+              <div class="an-deadline-date">${formatDate(c.effectiveDate)} · ${(c.departments||[]).join(', ')}</div>
+            </div>
+          </div>`;
+        }).join('') : '<div style="color:var(--text-3);font-size:13px">Нет предстоящих дедлайнов</div>'}
+      </div>
+    </div>`;
+}
+
+// ── Матрица рисков ──
+function renderRiskMatrix() {
+  if (!isAdmin()) return;
+
+  const pub = getAllChanges().filter(c => !c.type || c.type === 'published');
+
+  // Вероятность (на основе критичности) × Влияние (на основе критичности)
+  const IMPACT = { 'Высокая': 3, 'Средняя': 2, 'Низкая': 1, 'Отсутствует': 0 };
+  // Для матрицы используем критичность как вероятность и реальное влияние
+  // По осям: Y = вероятность нарушения (критичность), X = скорость вступления (дни)
+  const now = new Date();
+
+  function getUrgency(c) {
+    if (!c.effectiveDate) return 1;
+    const days = Math.ceil((new Date(c.effectiveDate)-now)/86400000);
+    if (days <= 0)  return 3; // уже вступил
+    if (days <= 60) return 3; // срочно
+    if (days <= 180) return 2; // скоро
+    return 1; // не срочно
+  }
+
+  function getCritLevel(c) {
+    return { 'Высокая':3, 'Средняя':2, 'Низкая':1, 'Отсутствует':0 }[c.criticality] || 0;
+  }
+
+  // Матрица 3×3: X=срочность, Y=критичность
+  const matrix = [[],[],[],[]], // 0-none, 1-low, 2-med, 3-high cells
+  cells = {};
+  for (let y=1; y<=3; y++) for (let x=1; x<=3; x++) cells[`${x}-${y}`] = [];
+
+  pub.forEach(c => {
+    const x = getUrgency(c);
+    const y = getCritLevel(c);
+    if (y === 0) return; // без риска не показываем
+    const key = `${x}-${y}`;
+    if (cells[key]) cells[key].push(c);
+  });
+
+  const riskColor = (x,y) => {
+    const score = x * y;
+    if (score >= 7) return 'risk-critical';
+    if (score >= 4) return 'risk-high';
+    if (score >= 2) return 'risk-medium';
+    return 'risk-low';
+  };
+
+  const yLabels = {3:'Высокая', 2:'Средняя', 1:'Низкая'};
+  const xLabels = {1:'Не срочно', 2:'До 6 мес.', 3:'Срочно / в силе'};
+
+  const container = document.getElementById('risk-matrix-content');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="risk-matrix-wrap">
+      <div class="risk-axis-y-label">← Критичность риска</div>
+      <div class="risk-matrix-inner">
+        <div class="risk-matrix-grid">
+          <!-- Y axis labels -->
+          <div class="risk-y-labels">
+            ${[3,2,1].map(y=>`<div class="risk-y-label">${yLabels[y]}</div>`).join('')}
+          </div>
+          <!-- Cells -->
+          <div class="risk-cells">
+            ${[3,2,1].map(y =>
+              [1,2,3].map(x => {
+                const items = cells[`${x}-${y}`] || [];
+                const rc = riskColor(x,y);
+                return `<div class="risk-cell ${rc}">
+                  ${items.length ? items.map(c=>
+                    `<div class="risk-item" onclick="openChange('${c.id}')" title="${c.title}">
+                      <span class="risk-item-num">#${c.num}</span>
+                      <span class="risk-item-title">${c.title.substring(0,40)}${c.title.length>40?'…':''}</span>
+                    </div>`
+                  ).join('') : `<div class="risk-cell-empty"></div>`}
+                </div>`;
+              }).join('')
+            ).join('')}
+          </div>
+        </div>
+        <!-- X axis labels -->
+        <div class="risk-x-labels">
+          <div></div>
+          ${[1,2,3].map(x=>`<div class="risk-x-label">${xLabels[x]}</div>`).join('')}
+        </div>
+        <div class="risk-axis-x-label">Срочность →</div>
+      </div>
+    </div>
+
+    <!-- Легенда -->
+    <div class="risk-legend">
+      <div class="risk-legend-item"><div class="risk-legend-dot risk-critical"></div>Критический риск</div>
+      <div class="risk-legend-item"><div class="risk-legend-dot risk-high"></div>Высокий риск</div>
+      <div class="risk-legend-item"><div class="risk-legend-dot risk-medium"></div>Средний риск</div>
+      <div class="risk-legend-item"><div class="risk-legend-dot risk-low"></div>Низкий риск</div>
+    </div>
+
+    <!-- НПА без матрицы (нет критичности) -->
+    ${pub.filter(c=>c.criticality==='Отсутствует'||!c.criticality).length ?
+      `<div style="margin-top:16px;font-size:12px;color:var(--text-3)">
+        ⬡ НПА без риска (не отображаются на матрице): ${pub.filter(c=>!getCritLevel(c)).map(c=>'#'+c.num).join(', ')}
+      </div>` : ''}`;
+}
+
+function setAdminTab(tab) {
+  document.querySelectorAll('.admin-tab-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.tab === tab)
+  );
+  document.querySelectorAll('.admin-tab-panel').forEach(p =>
+    p.style.display = p.dataset.panel === tab ? 'block' : 'none'
+  );
+  if (tab === 'analytics')    renderAnalytics();
+  if (tab === 'risk-matrix')  renderRiskMatrix();
+  if (tab === 'editor')       renderEditor();
+  if (tab === 'proposals')    renderProposals();
+}
 // ============================================================
 // PROPOSALS (предложения от пользователей)
 // ============================================================
@@ -1363,6 +1627,11 @@ function renderProposals() {
     container.innerHTML = '<div class="empty-state"><div class="icon">◈</div><p>Предложений пока нет</p></div>';
     return;
   }
+  // Обновляем бейдж вкладки
+  const badge = document.getElementById('proposals-badge');
+  const newCount = props.filter(p=>p.status==='new').length;
+  if (badge) badge.textContent = newCount > 0 ? newCount : '';
+
   container.innerHTML = [...props].reverse().map(p => `
     <div class="proposal-card ${p.status === 'new' ? 'proposal-new' : ''}">
       <div class="proposal-header">

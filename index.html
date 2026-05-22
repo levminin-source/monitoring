@@ -428,24 +428,53 @@
       </div>
       <!-- ADMIN EDITOR VIEW -->
       <div id="view-admin-editor" class="view">
-        <div class="card" style="margin-bottom:16px">
-          <div class="card-header">
-            <h3>Редактор НПА</h3>
-            <span class="card-hint">только для администратора</span>
-          </div>
-          <p style="font-size:13px;color:var(--text-2);margin-bottom:16px">
-            Здесь можно редактировать любой НПА и удалять добавленные через форму.
-            Записи из <code>data.js</code> удалить нельзя — только редактировать.
-          </p>
-          <div id="editor-list"></div>
+        <!-- Вкладки администратора -->
+        <div class="admin-tabs">
+          <button class="admin-tab-btn active" data-tab="editor"      onclick="setAdminTab('editor')">✎ Редактор НПА</button>
+          <button class="admin-tab-btn"         data-tab="proposals"  onclick="setAdminTab('proposals')">✉ Предложения <span id="proposals-badge" class="admin-tab-badge"></span></button>
+          <button class="admin-tab-btn"         data-tab="analytics"  onclick="setAdminTab('analytics')">◈ Аналитика</button>
+          <button class="admin-tab-btn"         data-tab="risk-matrix" onclick="setAdminTab('risk-matrix')">⊞ Матрица рисков</button>
         </div>
 
-        <div class="card" id="proposals-card" style="display:none">
-          <div class="card-header">
-            <h3>Входящие предложения от сотрудников</h3>
-            <span class="card-hint">только для администратора</span>
+        <!-- Редактор -->
+        <div class="admin-tab-panel" data-panel="editor">
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-header">
+              <h3>Редактор НПА</h3>
+              <span class="card-hint">только для администратора</span>
+            </div>
+            <p style="font-size:13px;color:var(--text-2);margin-bottom:16px">
+              Редактируйте любой НПА. Удаление доступно только для записей, добавленных через форму.
+            </p>
+            <div id="editor-list"></div>
           </div>
-          <div id="proposals-list"></div>
+        </div>
+
+        <!-- Предложения -->
+        <div class="admin-tab-panel" data-panel="proposals" style="display:none">
+          <div class="card">
+            <div class="card-header">
+              <h3>Входящие предложения от сотрудников</h3>
+              <span class="card-hint">только для администратора</span>
+            </div>
+            <div id="proposals-list"></div>
+          </div>
+        </div>
+
+        <!-- Аналитика -->
+        <div class="admin-tab-panel" data-panel="analytics" style="display:none">
+          <div id="analytics-content"></div>
+        </div>
+
+        <!-- Матрица рисков -->
+        <div class="admin-tab-panel" data-panel="risk-matrix" style="display:none">
+          <div class="card">
+            <div class="card-header">
+              <h3>Матрица рисков</h3>
+              <span class="card-hint">критичность × срочность вступления в силу</span>
+            </div>
+            <div id="risk-matrix-content"></div>
+          </div>
         </div>
       </div>
     </main>
@@ -689,7 +718,7 @@
   </div>
 
   <!-- TOUR OVERLAY -->
-  <div id="tour-overlay" style="display:none;position:fixed;inset:0;background:rgba(6,14,28,0.65);z-index:300"></div>
+  <div id="tour-overlay" style="display:none;position:fixed;inset:0;background:rgba(6,14,28,0.65);z-index:300;pointer-events:none"></div>
   <div id="tour-popup" class="tour-popup" style="display:none;z-index:400"></div>
 
   <div id="toast" class="toast"></div>

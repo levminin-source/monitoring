@@ -52,17 +52,99 @@
   --border:        rgba(0,0,0,0.09);
   --border-hover:  rgba(0,0,0,0.18);
   --text:   #0d1e34;
-  --text-2: #3d5a78;
-  --text-3: #8aa0b8;
+  --text-2: #2d4a6a;
+  --text-3: #6a8aaa;
   --shadow: 0 4px 24px rgba(13,30,52,0.1);
 
   --accent-glow: rgba(200,16,46,0.10);
 
-  --high-bg:   rgba(232,41,74,0.08);
-  --medium-bg: rgba(212,130,10,0.09);
-  --low-bg:    rgba(39,174,96,0.09);
-  --none-bg:   rgba(74,127,165,0.09);
+  --high:    #C8102E;
+  --high-bg:   rgba(200,16,46,0.08);
+  --medium:    #B36800;
+  --medium-bg: rgba(179,104,0,0.09);
+  --low:       #1a8a4a;
+  --low-bg:    rgba(26,138,74,0.09);
+  --none:      #2e6a9a;
+  --none-bg:   rgba(46,106,154,0.09);
+  --accent-2:  #2e6a9a;
 }
+
+/* Светлая тема — текст в бейджах */
+[data-theme="light"] .badge-dept { color: #fff; }
+[data-theme="light"] .badge-status { color: var(--text-2); }
+[data-theme="light"] .change-number { color: #fff; }
+[data-theme="light"] .urgent-dept { color: #fff; }
+
+/* Светлая тема — навигация */
+[data-theme="light"] .nav-item { color: var(--text-2); }
+[data-theme="light"] .nav-item:hover { background: var(--bg-3); color: var(--text); }
+[data-theme="light"] .nav-item.active { color: var(--accent); }
+[data-theme="light"] .nav-badge { background: var(--bg-4); color: var(--text-2); }
+
+/* Светлая тема — сайдбар */
+[data-theme="light"] .sidebar { border-right-color: var(--border); }
+[data-theme="light"] .sidebar-section-label { color: var(--text-3); }
+[data-theme="light"] .crit-btn { color: var(--text-2); }
+[data-theme="light"] .crit-btn:hover,
+[data-theme="light"] .crit-btn.active { background: var(--bg-3); color: var(--text); }
+[data-theme="light"] .dept-btn { color: var(--text-2); }
+[data-theme="light"] .dept-btn.active { color: #fff; }
+[data-theme="light"] .quarter-badge { color: var(--text-3); }
+[data-theme="light"] .btn-export { color: var(--text-2); }
+[data-theme="light"] .btn-export:hover { color: var(--text); }
+
+/* Светлая тема — топ бар */
+[data-theme="light"] .top-bar { background: var(--bg-2); }
+[data-theme="light"] .page-title { color: var(--text); }
+[data-theme="light"] .menu-toggle { color: var(--text-2); }
+
+/* Светлая тема — карточки */
+[data-theme="light"] .change-category { color: var(--text-3); }
+[data-theme="light"] .change-title { color: var(--text); }
+[data-theme="light"] .change-summary { color: var(--text-2); }
+[data-theme="light"] .change-date { color: var(--text-3); }
+[data-theme="light"] .change-comments-count { color: var(--text-3); }
+
+/* Светлая тема — дашборд */
+[data-theme="light"] .stat-label { color: var(--text-2); }
+[data-theme="light"] .card-hint { color: var(--text-3); }
+[data-theme="light"] .urgent-date { color: var(--text-3); }
+[data-theme="light"] .urgent-text { color: var(--text); }
+[data-theme="light"] .ack-dept-name { color: var(--text-2); }
+[data-theme="light"] .ack-pct { color: var(--text-3); }
+[data-theme="light"] .ack-bar-track { background: var(--bg-4); }
+[data-theme="light"] .digest-cat { color: var(--text-3); }
+[data-theme="light"] .digest-title { color: var(--text); }
+
+/* Светлая тема — модальное окно */
+[data-theme="light"] .modal-cat { color: var(--accent); }
+[data-theme="light"] .modal-title { color: var(--text); }
+[data-theme="light"] .modal-section-label { color: var(--accent); }
+[data-theme="light"] .modal-section-text { color: var(--text-2); }
+[data-theme="light"] .modal-field label { color: var(--accent); }
+[data-theme="light"] .modal-field span { color: var(--text); }
+[data-theme="light"] .modal-close { color: var(--text-2); }
+
+/* Светлая тема — комментарии */
+[data-theme="light"] .comment-author { color: var(--accent); }
+[data-theme="light"] .comment-time { color: var(--text-3); }
+[data-theme="light"] .comment-text { color: var(--text-2); }
+[data-theme="light"] .comment-user-note { color: var(--text-3); }
+[data-theme="light"] .comments-section h4 { color: var(--text); }
+[data-theme="light"] .all-comment-link { color: var(--accent); }
+
+/* Светлая тема — форма администратора */
+[data-theme="light"] .admin-header h2 { color: var(--text); }
+[data-theme="light"] .admin-header p { color: var(--text-2); }
+[data-theme="light"] .form-group label { color: var(--accent); }
+[data-theme="light"] .btn-secondary { color: var(--text-2); }
+
+/* Светлая тема — логин */
+[data-theme="light"] .login-title { color: var(--text); }
+[data-theme="light"] .login-subtitle { color: var(--text-2); }
+[data-theme="light"] .login-footer { color: var(--text-3); }
+[data-theme="light"] .login-brand-name { color: var(--text); }
+[data-theme="light"] .login-brand-sub { color: var(--text-3); }
 
 html, body { height: 100%; }
 body {

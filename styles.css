@@ -878,143 +878,119 @@ body {
 ::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
 
 /* =====================
-   RESPONSIVE
-   ===================== */
-@media (max-width: 900px) {
-  .sidebar { position: absolute; height: 100vh; top: 0; left: 0; }
-  .sidebar.hidden { transform: translateX(-100%); }
-  .dashboard-grid { grid-template-columns: repeat(2, 1fr); }
-  .dashboard-row { grid-template-columns: 1fr; }
-  .digest-grid { grid-template-columns: repeat(2, 1fr); }
-  .modal-grid { grid-template-columns: 1fr; }
-}
-@media (max-width: 600px) {
-  .dashboard-grid { grid-template-columns: 1fr 1fr; }
-  .digest-grid { grid-template-columns: 1fr; }
-  .top-bar { padding: 0 14px; }
-  .view { padding: 14px; }
-  .search-wrapper input { width: 130px; }
-  .search-wrapper input:focus { width: 160px; }
-}
-
-/* =====================
-   MOBILE OVERHAUL
+   RESPONSIVE & MOBILE
    ===================== */
 
-/* Overlay за сайдбаром на мобильном */
+/* Sidebar overlay */
 .sidebar-overlay {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0,0,0,0.55);
   z-index: 9;
 }
 .sidebar-overlay.visible { display: block; }
 
+/* On mobile sidebar floats over content */
 @media (max-width: 900px) {
-  /* Сайдбар — поверх контента */
+  #app { display: block; position: relative; }
+
   .sidebar {
     position: fixed;
     top: 0; left: 0;
-    height: 100vh;
+    height: 100%;
+    width: 280px;
     z-index: 10;
     transform: translateX(0);
-    box-shadow: 4px 0 32px rgba(0,0,0,0.5);
+    transition: transform 0.3s;
+    box-shadow: 4px 0 32px rgba(0,0,0,0.6);
   }
   .sidebar.hidden { transform: translateX(-100%); }
 
-  /* Основной контент занимает всю ширину */
-  .main-content { width: 100%; }
+  .main-content {
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
 
-  /* Топ-бар */
+  /* Top bar */
   .top-bar { padding: 0 12px; height: 52px; gap: 8px; }
   .page-title { font-size: 14px; }
-
-  /* Скрываем поиск — оставляем только иконку */
   .search-wrapper { display: none; }
 
-  /* User chip — компактный */
+  /* User chip compact */
   .user-chip { padding: 5px 8px; gap: 6px; }
-  .user-chip-name { max-width: 80px; font-size: 12px; }
+  .user-chip-name { max-width: 100px; font-size: 12px; }
   .user-chip-role { display: none; }
 
+  /* Views */
+  .view { padding: 12px; overflow-y: auto; flex: 1; }
+
   /* Dashboard */
-  .dashboard-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-  .stat-number { font-size: 32px; }
+  .dashboard-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
+  .stat-card { padding: 14px; }
+  .stat-number { font-size: 30px; }
+  .stat-label { font-size: 11px; }
   .dashboard-row { grid-template-columns: 1fr; gap: 12px; }
   .digest-grid { grid-template-columns: 1fr; gap: 10px; }
 
-  /* Карточки изменений */
+  /* Change cards */
   .change-top { flex-wrap: wrap; gap: 8px; }
-  .change-badges { width: 100%; justify-content: flex-start; }
+  .change-badges { width: 100%; justify-content: flex-start; margin-top: 4px; }
   .change-number { font-size: 10px; }
   .change-title { font-size: 14px; }
 
-  /* Модальное окно */
-  .modal { padding: 20px 16px; margin: 0; border-radius: 12px 12px 0 0; max-height: 95vh; }
+  /* Modal — bottom sheet */
   .modal-overlay { align-items: flex-end; padding: 0; }
+  .modal {
+    padding: 20px 16px;
+    border-radius: 16px 16px 0 0;
+    max-height: 92vh;
+    width: 100%;
+    max-width: 100%;
+  }
   .modal-grid { grid-template-columns: 1fr; }
-  .modal-title { font-size: 17px; }
+  .modal-title { font-size: 17px; padding-right: 30px; }
 
-  /* Формы */
+  /* Forms */
   .form-row { grid-template-columns: 1fr; }
   .comment-form-row { flex-direction: column; }
   .comment-type-select { width: 100%; }
 
-  /* Вид */
-  .view { padding: 12px; }
+  /* Admin modal */
+  .modal-admin { border-radius: 16px 16px 0 0; max-width: 100%; }
+}
 
-  /* Карточки дайджеста */
-  .digest-card { padding: 12px; }
+/* Mobile search bar below topbar */
+.mobile-search {
+  display: none;
+  padding: 8px 12px;
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.mobile-search input {
+  width: 100%;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 13px;
+  padding: 8px 12px;
+  outline: none;
+}
+.mobile-search input:focus { border-color: var(--accent); }
+.mobile-search input::placeholder { color: var(--text-3); }
+
+@media (max-width: 900px) {
+  .mobile-search { display: flex; }
 }
 
 @media (max-width: 480px) {
-  /* Stat карточки — одна колонка на очень маленьких */
   .dashboard-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
-  .stat-card { padding: 14px; }
-  .stat-number { font-size: 28px; }
-  .stat-label { font-size: 11px; }
-
-  /* Топ-бар */
-  .top-bar { height: 48px; }
-  .page-title { font-size: 13px; }
-
-  /* Login */
-  .login-card { padding: 24px 20px; margin: 12px; }
-  .login-title { font-size: 18px; }
-
-  /* Urgent items */
-  .urgent-item { flex-wrap: wrap; gap: 6px; }
-  .urgent-date { min-width: auto; }
-
-  /* Badges в карточках */
-  .change-bottom { gap: 6px; }
+  .login-card { padding: 24px 16px; margin: 12px; }
   .badge { font-size: 10px; padding: 2px 6px; }
-}
-
-/* Поиск — показываем на мобильном как отдельную строку под топбаром */
-@media (max-width: 900px) {
-  .mobile-search {
-    display: flex;
-    padding: 8px 12px;
-    background: var(--bg-2);
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-  }
-  .mobile-search input {
-    flex: 1;
-    background: var(--bg-3);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    color: var(--text);
-    font-family: var(--font);
-    font-size: 13px;
-    padding: 8px 12px;
-    outline: none;
-  }
-  .mobile-search input:focus { border-color: var(--accent); }
-  .mobile-search input::placeholder { color: var(--text-3); }
-}
-@media (min-width: 901px) {
-  .mobile-search { display: none; }
+  .urgent-item { flex-wrap: wrap; gap: 4px; }
 }

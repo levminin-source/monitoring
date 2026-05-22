@@ -4,12 +4,12 @@
 // FIREBASE CONFIG — вставьте свои значения из Firebase Console
 // ============================================================
 const FIREBASE_CONFIG = {
-  apiKey:            "AIzaSyDD_IwbIN87V6VXWqpTKkEV3aEfh8ZQw8k",
-  authDomain:        "marshall-compliance-monitor.firebaseapp.com",
-  projectId:         "marshall-compliance-monitor",
-  storageBucket:     "marshall-compliance-monitor.firebasestorage.app",
-  messagingSenderId: "417137979657",
-  appId:             "1:417137979657:web:936c1706379c270c5c23d8"
+  apiKey:            "YOUR_API_KEY",
+  authDomain:        "YOUR_PROJECT.firebaseapp.com",
+  projectId:         "YOUR_PROJECT_ID",
+  storageBucket:     "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId:             "YOUR_APP_ID"
 };
 
 // ============================================================
@@ -182,7 +182,11 @@ function showLoginScreen() {
 
 function showApp() {
   document.getElementById('login-screen').classList.remove('visible');
-  document.getElementById('app').style.display = 'flex';
+  document.getElementById('app').style.display = 'block';
+  // На мобильном сайдбар скрыт по умолчанию
+  if (window.innerWidth <= 900) {
+    document.getElementById('sidebar').classList.add('hidden');
+  }
 
   // Заполняем chip пользователя в шапке
   const initials = currentEmail ? currentEmail[0].toUpperCase() : '?';
@@ -280,7 +284,8 @@ function toggleSidebar() {
 // ============================================================
 function buildDeptFilters() {
   const all   = getAllChanges().flatMap(c => c.departments);
-  const depts = [...new Set(all)].sort();
+  // Исключаем 'Все' из списка — это служебное значение, не департамент
+  const depts = [...new Set(all)].filter(d => d !== 'Все').sort();
   const container = document.getElementById('dept-filters');
   if (!container) return;
   container.innerHTML = `<button class="dept-btn active" data-dept="all" onclick="filterDept('all')">Все</button>`;

@@ -313,7 +313,8 @@
 
       <div class="sidebar-bottom">
         <button class="btn-admin" id="btn-add-change" onclick="openAdminPanel()" style="display:none">⊕ Добавить изменение</button>
-        <button class="btn-export" onclick="exportReport()">↓ Экспорт отчёта</button>
+        <button class="btn-export" onclick="openExportModal()">↓ Экспорт отчёта</button>
+        <button class="btn-propose" id="btn-propose" onclick="openProposalModal()">✉ Предложить изменение</button>
         <div class="quarter-badge">Q1 · 2026</div>
       </div>
     </aside>
@@ -434,6 +435,14 @@
           </p>
           <div id="editor-list"></div>
         </div>
+
+        <div class="card" id="proposals-card" style="display:none">
+          <div class="card-header">
+            <h3>Входящие предложения от сотрудников</h3>
+            <span class="card-hint">только для администратора</span>
+          </div>
+          <div id="proposals-list"></div>
+        </div>
       </div>
     </main>
   </div>
@@ -537,6 +546,76 @@
         <div class="form-actions">
           <button type="button" class="btn-secondary" onclick="closeAdmin()">Отмена</button>
           <button type="submit" class="btn-primary">Добавить запись</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- EXPORT MODAL -->
+  <div class="modal-overlay" id="export-modal-overlay" onclick="closeExportModal()">
+    <div class="modal" style="max-width:420px" onclick="event.stopPropagation()">
+      <button class="modal-close" onclick="closeExportModal()">×</button>
+      <div class="modal-cat">Экспорт отчёта</div>
+      <div class="modal-title" style="margin-bottom:20px">Выберите формат</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <button class="export-fmt-btn" onclick="exportExcel()">
+          <span class="export-fmt-icon">⊞</span>
+          <div>
+            <div class="export-fmt-title">Microsoft Excel (.xlsx)</div>
+            <div class="export-fmt-sub">Три листа: Опубликованные, Проектные, Комментарии</div>
+          </div>
+        </button>
+        <button class="export-fmt-btn" onclick="exportWord()">
+          <span class="export-fmt-icon">W</span>
+          <div>
+            <div class="export-fmt-title">Microsoft Word (.doc)</div>
+            <div class="export-fmt-sub">Брендированный документ с полным описанием</div>
+          </div>
+        </button>
+        <button class="export-fmt-btn" onclick="exportPDF()">
+          <span class="export-fmt-icon">⬡</span>
+          <div>
+            <div class="export-fmt-title">PDF (печать)</div>
+            <div class="export-fmt-sub">Брендированная вёрстка Marshall — сохранить как PDF</div>
+          </div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROPOSAL MODAL -->
+  <div class="modal-overlay" id="proposal-modal-overlay" onclick="closeProposalModal()">
+    <div class="modal modal-admin" onclick="event.stopPropagation()">
+      <button class="modal-close" onclick="closeProposalModal()">×</button>
+      <div class="admin-header">
+        <h2>Предложить изменение к рассмотрению</h2>
+        <p>Заполните форму — юрист получит уведомление и рассмотрит предложение</p>
+      </div>
+      <form class="admin-form" onsubmit="submitProposal(event)">
+        <div class="form-group">
+          <label>Категория</label>
+          <input name="category" type="text" placeholder="Трудовое право / Налоговое регулирование…" required>
+        </div>
+        <div class="form-group">
+          <label>Краткое название изменения</label>
+          <input name="title" type="text" placeholder="Что именно изменилось…" required>
+        </div>
+        <div class="form-group">
+          <label>Описание</label>
+          <textarea name="summary" rows="4" placeholder="Подробнее о сути изменения…" required></textarea>
+        </div>
+        <div class="form-group">
+          <label>Нормативный акт (если известен)</label>
+          <input name="norm_act" type="text" placeholder="ФЗ от … № …">
+        </div>
+        <div class="form-group">
+          <label>Источник информации</label>
+          <input name="source" type="text" placeholder="Ссылка, публикация, уведомление…">
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" onclick="closeProposalModal()">Отмена</button>
+          <button type="submit" class="btn-primary">Отправить предложение</button>
         </div>
       </form>
     </div>

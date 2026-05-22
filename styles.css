@@ -1305,3 +1305,88 @@ body {
 /* Light theme editor */
 [data-theme="light"] .editor-card-title { color: var(--text); }
 [data-theme="light"] .editor-section-title { color: var(--text-3); }
+
+/* =====================
+   EXPORT FORMAT BUTTONS
+   ===================== */
+.export-fmt-btn {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: var(--font);
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: left;
+  width: 100%;
+}
+.export-fmt-btn:hover { border-color: var(--accent); background: var(--bg-4); }
+.export-fmt-icon {
+  font-size: 22px;
+  width: 40px;
+  height: 40px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  flex-shrink: 0;
+}
+.export-fmt-title { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+.export-fmt-sub   { font-size: 11px; color: var(--text-2); }
+
+/* =====================
+   PROPOSE BUTTON
+   ===================== */
+.btn-propose {
+  padding: 9px 14px;
+  background: transparent;
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+.btn-propose:hover { border-color: var(--accent); color: var(--accent); }
+
+/* =====================
+   PROPOSALS
+   ===================== */
+.proposal-card {
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  transition: border 0.15s;
+}
+.proposal-card.proposal-new {
+  border-left: 3px solid var(--accent);
+}
+.proposal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.proposal-title  { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
+.proposal-meta   { font-size: 11px; color: var(--text-3); }
+.proposal-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.proposal-body .field { font-size: 12px; color: var(--text-2); margin: 3px 0; }
+.proposal-body .field-lbl { font-weight: 700; color: var(--accent); }
+
+/* Light theme proposals */
+[data-theme="light"] .proposal-title { color: var(--text); }
+[data-theme="light"] .proposal-meta  { color: var(--text-3); }
+[data-theme="light"] .export-fmt-title { color: var(--text); }

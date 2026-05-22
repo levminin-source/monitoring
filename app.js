@@ -4,12 +4,12 @@
 // FIREBASE CONFIG — вставьте свои значения из Firebase Console
 // ============================================================
 const FIREBASE_CONFIG = {
-  apiKey:            "AIzaSyDD_IwbIN87V6VXWqpTKkEV3aEfh8ZQw8k",
-  authDomain:        "marshall-compliance-monitor.firebaseapp.com",
-  projectId:         "marshall-compliance-monitor",
-  storageBucket:     "marshall-compliance-monitor.firebasestorage.app",
-  messagingSenderId: "417137979657",
-  appId:             "1:417137979657:web:936c1706379c270c5c23d8"
+  apiKey:            "YOUR_API_KEY",
+  authDomain:        "YOUR_PROJECT.firebaseapp.com",
+  projectId:         "YOUR_PROJECT_ID",
+  storageBucket:     "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId:             "YOUR_APP_ID"
 };
 
 // ============================================================
@@ -32,7 +32,7 @@ const CONFIGURED = FIREBASE_CONFIG.apiKey !== 'YOUR_API_KEY';
 // ADMIN CONFIG — добавьте email юриста-администратора
 // ============================================================
 const ADMIN_EMAILS = [
-  'lev.minin@marshall.parts'   // ← замените на реальный email
+  'YOUR_LAWYER_EMAIL@marshall.com'   // ← замените на реальный email
 ];
 
 function isAdmin() {
@@ -77,6 +77,7 @@ function startFirestoreListener() {
         store.comments         = data.comments         || {};
         store.acknowledgements = data.acknowledgements || {};
         store.extraChanges     = data.extraChanges     || [];
+        store.proposals        = data.proposals        || [];
       }
       refreshUI();
       setLoading(false);
@@ -216,10 +217,12 @@ function showApp() {
   }
 
   // Показываем/скрываем элементы только для администратора
-  const adminNav   = document.getElementById('nav-admin');
-  const adminBtn   = document.getElementById('btn-add-change');
-  if (adminNav) adminNav.style.display = isAdmin() ? 'flex' : 'none';
-  if (adminBtn) adminBtn.style.display = isAdmin() ? 'block' : 'none';
+  const adminNav    = document.getElementById('nav-admin');
+  const adminBtn    = document.getElementById('btn-add-change');
+  const proposeBtn  = document.getElementById('btn-propose');
+  if (adminNav)   adminNav.style.display   = isAdmin() ? 'flex'  : 'none';
+  if (adminBtn)   adminBtn.style.display   = isAdmin() ? 'block' : 'none';
+  if (proposeBtn) proposeBtn.style.display = isAdmin() ? 'none'  : 'block';
 }
 
 // ============================================================
@@ -705,42 +708,278 @@ async function submitNewChange(e) {
 // ============================================================
 // EXPORT
 // ============================================================
-function exportReport() {
-  const lines = [];
-  lines.push(`COMPLIANCE MONITOR — ОТЧЁТ ${QUARTER}`);
-  lines.push(`Дата формирования: ${new Date().toLocaleDateString('ru-RU')}`);
-  lines.push('='.repeat(70));
-  lines.push('\nI. ОПУБЛИКОВАННЫЕ НПА\n');
-  PUBLISHED_CHANGES.forEach(c => {
-    lines.push(`#${c.num} ${c.title}`);
-    lines.push(`Категория: ${c.category} | Критичность: ${c.criticality}`);
-    lines.push(`Нормативный акт: ${c.normAct}`);
-    lines.push(`Дата вступления: ${formatDate(c.effectiveDate)}`);
-    lines.push(`Департаменты: ${c.departments.join(', ')} | Статус: ${c.status}`);
+function openExportModal() {
+  document.getElementById('export-modal-overlay').classList.add('open');
+}
+function closeExportModal() {
+  document.getElementById('export-modal-overlay').classList.remove('open');
+}
+
+// ── Excel ──
+function exportExcel() {
+  // Используем SheetJS (xlsx) через CDN
+  if (typeof XLSX === 'undefined') {
+    showToast('Загрузка библиотеки…', '');
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload = () => { closeExportModal(); _doExportExcel(); };
+    document.head.appendChild(s);
+  } else {
+    closeExportModal();
+    _doExportExcel();
+  }
+}
+
+function _doExportExcel() {
+  const wb = XLSX.utils.book_new();
+
+  // Лист 1 — Опубликованные
+  const pub = getAllChanges().filter(c => !c.type || c.type === 'published');
+  const pubRows = [
+    ['№','Категория','Суть изменения','Нормативный акт','Дата вступления',
+     'Штрафные санкции','Критичность','Влияние на компанию','Митигация риска',
+     'Срок адаптации','Департамент','Статус']
+  ];
+  pub.forEach(c => pubRows.push([
+    c.num, c.category, c.summary, c.normAct||'—',
+    formatDate(c.effectiveDate), c.sanctions||'—', c.criticality||'—',
+    c.impact||'—', c.mitigation||'—', c.deadline||'—',
+    (c.departments||[]).join(', '), c.status||'—'
+  ]));
+  const ws1 = XLSX.utils.aoa_to_sheet(pubRows);
+  ws1['!cols'] = [4,22,55,35,14,28,12,38,35,16,14,16].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, ws1, 'I. Q1 2026 ОПУБЛИКОВАННЫЕ');
+
+  // Лист 2 — Проектные
+  const dft = getAllChanges().filter(c => c.type === 'draft' || DRAFT_CHANGES.some(d=>d.id===c.id));
+  const dftRows = [
+    ['Категория','Суть изменения','Нормативный акт','Дата обсуждения',
+     'Вероятность','Дата вступления (план.)','Практическое значение','Департамент','Комментарии']
+  ];
+  dft.forEach(c => dftRows.push([
+    c.category, c.summary, c.normAct||'—', c.discussionDate||'—',
+    c.probability||'—', c.plannedDate||'—',
+    c.practicalValue||c.mitigation||'—',
+    (c.departments||[]).join(', '), c.comments||'—'
+  ]));
+  const ws2 = XLSX.utils.aoa_to_sheet(dftRows);
+  ws2['!cols'] = [22,55,35,22,12,22,40,14,30].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, ws2, 'II. ПРОЕКТНЫЕ');
+
+  // Лист 3 — Комментарии
+  const cmtRows = [['НПА','Автор','Email','Тип','Комментарий','Дата']];
+  Object.entries(store.comments).forEach(([id, cmts]) => {
+    const c = getAllChanges().find(x=>x.id===id);
+    cmts.forEach(cm => cmtRows.push([
+      c ? c.title : id, cm.author, cm.email||'—',
+      cm.type==='ack'?'Ознакомлен':cm.type==='issue'?'Вопрос':'Комментарий',
+      cm.text||'', cm.time
+    ]));
+  });
+  const ws3 = XLSX.utils.aoa_to_sheet(cmtRows);
+  ws3['!cols'] = [40,12,24,14,40,18].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, ws3, 'Комментарии');
+
+  XLSX.writeFile(wb, `Compliance_${QUARTER.replace(' ','_')}.xlsx`);
+  showToast('Excel скачан', 'success');
+}
+
+// ── Word (HTML→.doc trick) ──
+function exportWord() {
+  closeExportModal();
+  const pub = getAllChanges().filter(c => !c.type || c.type === 'published');
+  const dft = getAllChanges().filter(c => c.type === 'draft' || DRAFT_CHANGES.some(d=>d.id===c.id));
+  const date = new Date().toLocaleDateString('ru-RU');
+
+  let html = `<html xmlns:o="urn:schemas-microsoft-com:office:office"
+    xmlns:w="urn:schemas-microsoft-com:office:word"
+    xmlns="http://www.w3.org/TR/REC-html40">
+  <head><meta charset="utf-8">
+  <style>
+    body { font-family: Arial, sans-serif; font-size: 10pt; color: #0D1E34; }
+    h1 { font-size: 20pt; color: #C8102E; text-align: center; }
+    h2 { font-size: 13pt; color: #0D1E34; border-bottom: 2pt solid #C8102E; padding-bottom: 4pt; }
+    h3 { font-size: 11pt; color: #0D1E34; margin-bottom: 4pt; }
+    .meta { background: #F0F4F8; padding: 6pt; margin-bottom: 8pt; font-size: 9pt; }
+    .meta b { color: #C8102E; }
+    .field { margin: 3pt 0 3pt 12pt; font-size: 9pt; }
+    .field b { color: #C8102E; }
+    .sep { border-top: 1pt solid #C8D8E8; margin: 10pt 0; }
+    .crit-low    { color: #1A8A4A; font-weight: bold; }
+    .crit-med    { color: #B36800; font-weight: bold; }
+    .crit-high   { color: #C8102E; font-weight: bold; }
+    .crit-none   { color: #2E6A9A; font-weight: bold; }
+    .subtitle { text-align: center; font-size: 12pt; color: #3D5A78; }
+    .center { text-align: center; }
+  </style></head><body>
+  <h1>MARSHALL</h1>
+  <p class="subtitle"><b>МОНИТОРИНГ ИЗМЕНЕНИЙ ЗАКОНОДАТЕЛЬСТВА</b></p>
+  <p class="subtitle">${QUARTER} &nbsp;·&nbsp; Дата формирования: ${date}</p>
+  <br>
+  <h2>I. Опубликованные нормативно-правовые акты</h2>`;
+
+  pub.forEach(c => {
+    const cc = c.criticality==='Высокая'?'high':c.criticality==='Средняя'?'med':c.criticality==='Низкая'?'low':'none';
+    html += `<h3>#${c.num} ${c.title}</h3>
+    <div class="meta">
+      <b>Категория:</b> ${c.category} &nbsp;|&nbsp;
+      <b>Критичность:</b> <span class="crit-${cc}">${c.criticality||'—'}</span> &nbsp;|&nbsp;
+      <b>Департамент:</b> ${(c.departments||[]).join(', ')} &nbsp;|&nbsp;
+      <b>Статус:</b> ${c.status||'—'}
+    </div>
+    <div class="field"><b>Нормативный акт:</b> ${c.normAct||'—'}</div>
+    <div class="field"><b>Дата вступления в силу:</b> ${formatDate(c.effectiveDate)}</div>
+    <div class="field"><b>Штрафные санкции:</b> ${c.sanctions||'—'}</div>
+    <div class="field"><b>Суть изменения:</b> ${c.summary}</div>
+    <div class="field"><b>Влияние на компанию:</b> ${c.impact||'—'}</div>
+    <div class="field"><b>Митигация риска:</b> ${c.mitigation||'—'}</div>
+    <div class="field"><b>Срок адаптации:</b> ${c.deadline||'—'}</div>`;
     const cmts = getComments(c.id);
     if (cmts.length) {
-      lines.push(`Комментарии (${cmts.length}):`);
-      cmts.forEach(cm => lines.push(`  [${cm.author} / ${cm.email||'—'}] ${cm.time}: ${cm.text || '(Ознакомлен)'}`));
+      html += `<div class="field"><b>Комментарии (${cmts.length}):</b></div>`;
+      cmts.forEach(cm => html += `<div class="field" style="margin-left:24pt">
+        [${cm.author}${cm.email?' / '+cm.email:''}] ${cm.time}: ${cm.text||'(Ознакомлен)'}</div>`);
     }
-    lines.push('-'.repeat(50));
+    html += `<div class="sep"></div>`;
   });
-  lines.push('\nII. ПРОЕКТНЫЕ НПА\n');
-  DRAFT_CHANGES.forEach(c => {
-    lines.push(`#${c.num} ${c.title}`);
-    lines.push(`Вероятность: ${c.probability} | Плановая дата: ${c.plannedDate}`);
-    lines.push(`Нормативный акт: ${c.normAct}`);
-    lines.push(`Департаменты: ${c.departments.join(', ')}`);
-    lines.push('-'.repeat(50));
+
+  html += `<br><h2>II. Проектные нормативно-правовые акты</h2>`;
+  dft.forEach(c => {
+    html += `<h3>${c.title}</h3>
+    <div class="meta">
+      <b>Категория:</b> ${c.category} &nbsp;|&nbsp;
+      <b>Вероятность:</b> ${c.probability||'—'} &nbsp;|&nbsp;
+      <b>Департамент:</b> ${(c.departments||[]).join(', ')}
+    </div>
+    <div class="field"><b>Нормативный акт:</b> ${c.normAct||'—'}</div>
+    <div class="field"><b>Стадия:</b> ${c.discussionDate||'—'}</div>
+    <div class="field"><b>Плановая дата:</b> ${c.plannedDate||'—'}</div>
+    <div class="field"><b>Суть изменения:</b> ${c.summary}</div>
+    <div class="field"><b>Практическое значение:</b> ${c.practicalValue||c.mitigation||'—'}</div>
+    <div class="sep"></div>`;
   });
-  const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+
+  html += `</body></html>`;
+  const blob = new Blob([html], {type:'application/msword'});
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href = url;
-  a.download = `Compliance_Report_${QUARTER.replace(' ','_')}.txt`;
+  a.download = `Compliance_${QUARTER.replace(' ','_')}.doc`;
   a.click();
   URL.revokeObjectURL(url);
-  showToast('Отчёт скачан', 'success');
+  showToast('Word-документ скачан', 'success');
 }
+
+// ── PDF ──
+function exportPDF() {
+  closeExportModal();
+  const printWin = window.open('', '_blank', 'width=900,height=700');
+  const pub = getAllChanges().filter(c => !c.type || c.type === 'published');
+  const dft = getAllChanges().filter(c => c.type === 'draft' || DRAFT_CHANGES.some(d=>d.id===c.id));
+  const date = new Date().toLocaleDateString('ru-RU');
+
+  const crit_style = {
+    'Высокая':'background:#FFE8E8;color:#C8102E',
+    'Средняя':'background:#FFF5E0;color:#B36800',
+    'Низкая':'background:#E8F5EE;color:#1A8A4A',
+    'Отсутствует':'background:#E8F0F8;color:#2E6A9A'
+  };
+
+  let html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+  <style>
+    @page { margin: 20mm 18mm; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; font-size: 9pt; color: #0D1E34; }
+    .cover { text-align: center; padding: 60pt 0 40pt; border-bottom: 3pt solid #C8102E; margin-bottom: 30pt; }
+    .cover-logo { font-size: 28pt; font-weight: 900; color: #C8102E; letter-spacing: 4pt; }
+    .cover-title { font-size: 15pt; font-weight: bold; color: #0D1E34; margin: 10pt 0 6pt; }
+    .cover-sub { font-size: 11pt; color: #3D5A78; }
+    .section-header {
+      background: #0D1E34; color: white; font-size: 11pt; font-weight: bold;
+      padding: 8pt 12pt; margin: 20pt 0 10pt; letter-spacing: 1pt;
+    }
+    .card { border: 1pt solid #C8D8E8; border-left: 3pt solid #C8102E;
+            margin-bottom: 12pt; padding: 10pt 12pt; page-break-inside: avoid; }
+    .card-title { font-size: 10pt; font-weight: bold; color: #0D1E34; margin-bottom: 6pt; }
+    .card-num { background: #C8102E; color: white; font-size: 8pt; font-weight: bold;
+                padding: 1pt 5pt; margin-right: 6pt; }
+    .meta-row { display: flex; gap: 8pt; margin-bottom: 6pt; flex-wrap: wrap; }
+    .badge { font-size: 7.5pt; font-weight: bold; padding: 2pt 7pt; letter-spacing: 0.5pt; }
+    .badge-dept { background: #C8102E; color: white; }
+    .badge-status { background: #EAF0F7; color: #3D5A78; border: 1pt solid #C8D8E8; }
+    .field { margin: 3pt 0; font-size: 8.5pt; }
+    .field-label { font-weight: bold; color: #C8102E; }
+    .comments-block { background: #F8FBFF; border-top: 1pt solid #C8D8E8; margin-top: 8pt; padding-top: 6pt; }
+    .comment-item { font-size: 8pt; color: #3D5A78; margin: 2pt 0; padding-left: 8pt; border-left: 2pt solid #C8D8E8; }
+    .footer { position: fixed; bottom: 10mm; left: 18mm; right: 18mm;
+              border-top: 1pt solid #C8D8E8; padding-top: 4pt;
+              display: flex; justify-content: space-between; font-size: 7.5pt; color: #8AA0B8; }
+  </style></head><body>
+  <div class="cover">
+    <div class="cover-logo">MARSHALL</div>
+    <div class="cover-title">МОНИТОРИНГ ИЗМЕНЕНИЙ ЗАКОНОДАТЕЛЬСТВА</div>
+    <div class="cover-sub">${QUARTER} &nbsp;·&nbsp; Дата формирования: ${date}</div>
+  </div>
+  <div class="footer">
+    <span>MARSHALL Compliance Monitor</span>
+    <span>${QUARTER} · ${date}</span>
+    <span>Конфиденциально</span>
+  </div>
+  <div class="section-header">I. ОПУБЛИКОВАННЫЕ НОРМАТИВНО-ПРАВОВЫЕ АКТЫ</div>`;
+
+  pub.forEach(c => {
+    const cs = crit_style[c.criticality] || '';
+    const cmts = getComments(c.id);
+    html += `<div class="card">
+      <div class="card-title">
+        <span class="card-num">#${c.num}</span>${c.title}
+      </div>
+      <div class="meta-row">
+        <span class="badge" style="${cs}; padding:2pt 7pt; font-size:7.5pt; font-weight:bold">${c.criticality||'—'}</span>
+        ${(c.departments||[]).map(d=>`<span class="badge badge-dept">${d}</span>`).join('')}
+        <span class="badge badge-status">${c.status||'—'}</span>
+      </div>
+      <div class="field"><span class="field-label">Категория: </span>${c.category}</div>
+      <div class="field"><span class="field-label">Нормативный акт: </span>${c.normAct||'—'}</div>
+      <div class="field"><span class="field-label">Дата вступления: </span>${formatDate(c.effectiveDate)}</div>
+      <div class="field"><span class="field-label">Суть: </span>${c.summary}</div>
+      <div class="field"><span class="field-label">Влияние: </span>${c.impact||'—'}</div>
+      <div class="field"><span class="field-label">Митигация: </span>${c.mitigation||'—'}</div>
+      ${cmts.length ? `<div class="comments-block">
+        ${cmts.map(cm=>`<div class="comment-item">
+          [${cm.author}] ${cm.time}: ${cm.text||'Ознакомлен'}</div>`).join('')}
+      </div>` : ''}
+    </div>`;
+  });
+
+  html += `<div class="section-header">II. ПРОЕКТНЫЕ НОРМАТИВНО-ПРАВОВЫЕ АКТЫ</div>`;
+  dft.forEach(c => {
+    html += `<div class="card" style="border-left-color:#4a7fa5">
+      <div class="card-title">${c.title}</div>
+      <div class="meta-row">
+        <span class="badge" style="background:#E8F0F8;color:#2E6A9A;padding:2pt 7pt;font-size:7.5pt;font-weight:bold">
+          ${c.probability||'—'}</span>
+        ${(c.departments||[]).map(d=>`<span class="badge badge-dept">${d}</span>`).join('')}
+      </div>
+      <div class="field"><span class="field-label">Категория: </span>${c.category}</div>
+      <div class="field"><span class="field-label">Нормативный акт: </span>${c.normAct||'—'}</div>
+      <div class="field"><span class="field-label">Стадия: </span>${c.discussionDate||'—'}</div>
+      <div class="field"><span class="field-label">Плановая дата: </span>${c.plannedDate||'—'}</div>
+      <div class="field"><span class="field-label">Суть: </span>${c.summary}</div>
+      <div class="field"><span class="field-label">Практическое значение: </span>${c.practicalValue||c.mitigation||'—'}</div>
+    </div>`;
+  });
+
+  html += `</body></html>`;
+  printWin.document.write(html);
+  printWin.document.close();
+  printWin.focus();
+  setTimeout(() => { printWin.print(); }, 600);
+  showToast('Открыт диалог печати — выберите «Сохранить как PDF»', 'success');
+}
+
+// ── Старый текстовый экспорт (оставляем как запасной) ──
+function exportReport() { openExportModal(); }
 
 // ============================================================
 // TOAST
@@ -773,6 +1012,16 @@ function renderEditor() {
       <div class="editor-section-title">Проектные НПА (${allDft.length})</div>
       ${allDft.map(c => editorCard(c)).join('')}
     </div>`;
+
+  // Показываем блок предложений
+  const propCard = document.getElementById('proposals-card');
+  const newProps = (store.proposals||[]).filter(p => p.status === 'new').length;
+  if (propCard) {
+    propCard.style.display = 'block';
+    const h3 = propCard.querySelector('h3');
+    if (h3) h3.textContent = `Входящие предложения от сотрудников${newProps ? ' (' + newProps + ' новых)' : ''}`;
+  }
+  renderProposals();
 }
 
 function editorCard(c) {
@@ -930,6 +1179,110 @@ function closeEditModal() {
   document.getElementById('edit-modal-overlay').classList.remove('open');
 }
 
+
+// ============================================================
+// PROPOSALS (предложения от пользователей)
+// ============================================================
+function openProposalModal() {
+  if (!currentUser) { showToast('Выберите роль для отправки предложения', 'error'); return; }
+  document.getElementById('proposal-modal-overlay').classList.add('open');
+}
+function closeProposalModal() {
+  document.getElementById('proposal-modal-overlay').classList.remove('open');
+}
+
+async function submitProposal(e) {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const btn = e.target.querySelector('button[type=submit]');
+  btn.disabled = true; btn.textContent = 'Отправка…';
+
+  if (!store.proposals) store.proposals = [];
+  store.proposals.push({
+    id:        'prop-' + Date.now(),
+    author:    currentUser,
+    email:     currentEmail,
+    category:  fd.get('category'),
+    title:     fd.get('title'),
+    summary:   fd.get('summary'),
+    normAct:   fd.get('norm_act'),
+    source:    fd.get('source'),
+    time:      new Date().toLocaleDateString('ru-RU') + ' ' +
+               new Date().toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'}),
+    status:    'new'   // new | reviewed | rejected
+  });
+
+  await saveToCloud();
+  closeProposalModal();
+  e.target.reset();
+  btn.disabled = false; btn.textContent = 'Отправить предложение';
+  showToast('✓ Предложение отправлено администратору', 'success');
+}
+
+// Рендер раздела предложений (только для администратора)
+function renderProposals() {
+  const container = document.getElementById('proposals-list');
+  if (!container) return;
+  const props = store.proposals || [];
+  if (!props.length) {
+    container.innerHTML = '<div class="empty-state"><div class="icon">◈</div><p>Предложений пока нет</p></div>';
+    return;
+  }
+  container.innerHTML = [...props].reverse().map(p => `
+    <div class="proposal-card ${p.status === 'new' ? 'proposal-new' : ''}">
+      <div class="proposal-header">
+        <div>
+          <div class="proposal-title">${p.title}</div>
+          <div class="proposal-meta">${p.author} · ${p.email||''} · ${p.time}</div>
+        </div>
+        <div class="proposal-actions">
+          ${p.status === 'new' ? `
+            <button class="editor-btn-edit" onclick="acceptProposal('${p.id}')">✓ Принять</button>
+            <button class="editor-btn-delete" onclick="rejectProposal('${p.id}')">✕ Отклонить</button>
+          ` : `<span class="badge badge-${p.status === 'reviewed' ? 'ack' : 'high'}">${
+            p.status === 'reviewed' ? 'Принято' : 'Отклонено'
+          }</span>`}
+        </div>
+      </div>
+      <div class="proposal-body">
+        <div class="field"><span class="field-lbl">Категория:</span> ${p.category}</div>
+        <div class="field"><span class="field-lbl">Суть:</span> ${p.summary}</div>
+        ${p.normAct ? `<div class="field"><span class="field-lbl">Нормативный акт:</span> ${p.normAct}</div>` : ''}
+        ${p.source  ? `<div class="field"><span class="field-lbl">Источник:</span> ${p.source}</div>` : ''}
+      </div>
+    </div>`).join('');
+}
+
+async function acceptProposal(id) {
+  const p = (store.proposals||[]).find(x => x.id === id);
+  if (!p) return;
+  p.status = 'reviewed';
+  // Автоматически создаём запись в extraChanges для рассмотрения
+  store.extraChanges.push({
+    id:           'from-prop-' + Date.now(),
+    num:          getAllChanges().length + 1,
+    type:         'published',
+    category:     p.category,
+    title:        p.title,
+    summary:      p.summary,
+    normAct:      p.normAct || '—',
+    departments:  [p.author],
+    status:       'Мониторинг',
+    criticality:  'Средняя',
+    effectiveDate: '',
+    _fromProposal: id
+  });
+  await saveToCloud();
+  renderProposals();
+  renderPublished();
+  showToast('✓ Предложение принято и добавлено в черновик', 'success');
+}
+
+async function rejectProposal(id) {
+  const p = (store.proposals||[]).find(x => x.id === id);
+  if (p) { p.status = 'rejected'; await saveToCloud(); renderProposals(); }
+  showToast('Предложение отклонено', '');
+}
 // ============================================================
 // THEME TOGGLE
 // ============================================================

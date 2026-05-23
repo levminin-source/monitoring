@@ -1571,11 +1571,8 @@ body {
   display: flex;
   gap: 4px;
   margin-left: auto;
-  opacity: 0;
-  transition: opacity 0.15s;
+  opacity: 1;
 }
-.comment-item:hover .comment-actions,
-.reply-item:hover .comment-actions { opacity: 1; }
 
 .cmt-action-btn {
   background: none;

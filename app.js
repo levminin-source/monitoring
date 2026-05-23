@@ -15,9 +15,9 @@ const FIREBASE_CONFIG = {
 // ============================================================
 // EMAILJS CONFIG — вставьте ключи из emailjs.com
 // ============================================================
-const EMAILJS_SERVICE_ID  = 'YOUR_SERVICE_ID';   // ← из EmailJS Dashboard
-const EMAILJS_TEMPLATE_ID = 'YOUR_TEMPLATE_ID';  // ← ID шаблона письма
-const EMAILJS_PUBLIC_KEY  = 'YOUR_PUBLIC_KEY';   // ← Public Key аккаунта
+const EMAILJS_SERVICE_ID  = 'service_u7mo4k9';   // ← из EmailJS Dashboard
+const EMAILJS_TEMPLATE_ID = 'template_zmp7g7t';  // ← ID шаблона письма
+const EMAILJS_PUBLIC_KEY  = 'TEl016U64K4jHvw9z';   // ← Public Key аккаунта
 
 // ============================================================
 // STATE

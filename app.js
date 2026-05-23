@@ -259,6 +259,8 @@ function showApp() {
   setTimeout(initTourButton, 500);
   // Запускаем напоминания о дедлайнах
   initRemindersAfterLogin();
+  // Инициализируем EmailJS
+  initEmailJS();
 }
 
 function showAckBanner() {
@@ -1730,51 +1732,82 @@ async function rejectProposal(id) {
 
 // ============================================================
 // EMAIL NOTIFICATIONS (EmailJS)
-// Настройте на emailjs.com: Service ID, Template ID, Public Key
+// Инструкция по настройке — в README.md
 // ============================================================
-const EMAILJS_SERVICE_ID  = 'YOUR_SERVICE_ID';   // ← из EmailJS
-const EMAILJS_TEMPLATE_ID = 'YOUR_TEMPLATE_ID';  // ← из EmailJS
-const EMAILJS_PUBLIC_KEY  = 'YOUR_PUBLIC_KEY';   // ← из EmailJS
+const EMAILJS_SERVICE_ID  = 'YOUR_SERVICE_ID';   // ← из EmailJS Dashboard
+const EMAILJS_TEMPLATE_ID = 'YOUR_TEMPLATE_ID';  // ← ID шаблона письма
+const EMAILJS_PUBLIC_KEY  = 'YOUR_PUBLIC_KEY';   // ← Public Key аккаунта
+
+const EMAILJS_CONFIGURED = EMAILJS_SERVICE_ID !== 'YOUR_SERVICE_ID';
+
+// Инициализация SDK
+function initEmailJS() {
+  if (!EMAILJS_CONFIGURED) return;
+  const s = document.createElement('script');
+  s.src = 'https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js';
+  s.onload = () => emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+  document.head.appendChild(s);
+}
 
 function sendEmailNotification(entry) {
-  if (EMAILJS_SERVICE_ID === 'YOUR_SERVICE_ID') {
-    console.warn('EmailJS не настроен — уведомления не отправлены');
+  if (!EMAILJS_CONFIGURED) {
+    console.warn('EmailJS не настроен — см. README.md');
+    showToast('⚠ Email не настроен — см. README', 'error');
     return;
   }
-  // Загружаем SDK EmailJS если ещё не загружен
   if (typeof emailjs === 'undefined') {
-    const s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js';
-    s.onload = () => {
-      emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
-      _doSendEmail(entry);
-    };
-    document.head.appendChild(s);
-  } else {
-    _doSendEmail(entry);
+    setTimeout(() => sendEmailNotification(entry), 1000);
+    return;
   }
+  _doSendEmail(entry);
 }
 
 function _doSendEmail(entry) {
-  const depts = (entry.departments || []).join(', ');
-  // Собираем email-адреса получателей из USERS по департаментам
-  const recipients = Object.entries(USERS)
-    .filter(([, u]) => entry.departments.includes(u.dept) || entry.departments.includes('Все'))
-    .map(([email, u]) => ({ email, name: u.name }));
+  // Собираем получателей по департаментам из таблицы USERS
+  const recipients = Object.entries(USERS).filter(([, u]) =>
+    (entry.departments || []).includes(u.dept) ||
+    (entry.departments || []).includes('Все')
+  ).map(([email, u]) => ({ email, name: u.name }));
 
+  if (!recipients.length) {
+    showToast('Нет получателей для выбранных департаментов', 'error');
+    return;
+  }
+
+  const siteUrl   = window.location.origin + window.location.pathname;
+  const critColor = { 'Высокая':'#C8102E', 'Средняя':'#B36800', 'Низкая':'#1A8A4A', 'Отсутствует':'#2E6A9A' };
+  const depts     = (entry.departments || []).join(', ');
+  const dateStr   = entry.effectiveDate ? formatDate(entry.effectiveDate) : (entry.plannedDate || '—');
+
+  let sent = 0;
   recipients.forEach(r => {
     emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
-      to_email:    r.email,
-      to_name:     r.name,
-      title:       entry.title,
-      category:    entry.category,
-      criticality: entry.criticality || '—',
-      summary:     entry.summary,
-      effective:   entry.effectiveDate || entry.plannedDate || '—',
-      dept:        depts,
-      from_name:   currentName || 'Юридический департамент Marshall',
-      site_url:    window.location.origin + window.location.pathname
-    }).catch(e => console.warn('EmailJS error:', e));
+      to_email:      r.email,
+      to_name:       r.name,
+      from_name:     currentName || 'Юридический департамент Marshall',
+      title:         entry.title,
+      category:      entry.category || '—',
+      criticality:   entry.criticality || '—',
+      crit_color:    critColor[entry.criticality] || '#3D5A78',
+      summary:       entry.summary || '—',
+      impact:        entry.impact || '—',
+      mitigation:    entry.mitigation || '—',
+      effective:     dateStr,
+      sanctions:     entry.sanctions || '—',
+      dept:          depts,
+      status:        entry.status || '—',
+      is_urgent:     entry.urgent ? 'СРОЧНО' : '',
+      site_url:      siteUrl,
+      reply_to:      currentEmail
+    }).then(() => {
+      sent++;
+      if (sent === recipients.length) {
+        showToast(`✓ Уведомления отправлены (${sent} получателей)`, 'success');
+      }
+    }).catch(e => {
+      console.warn('EmailJS error:', e);
+      showToast('Ошибка отправки email: ' + (e.text || e.message || 'неизвестная ошибка'), 'error');
+    });
   });
 }
 

@@ -257,6 +257,8 @@ function showApp() {
   setTimeout(showAckBanner, 800);
   // Инициализируем кнопку тура
   setTimeout(initTourButton, 500);
+  // Запускаем напоминания о дедлайнах
+  initRemindersAfterLogin();
 }
 
 function showAckBanner() {
@@ -1998,6 +2000,174 @@ function showLoginHelp() {
 }
 function closeLoginHelp() {
   document.getElementById('login-help-modal').classList.remove('open');
+}
+
+// ============================================================
+// REMINDERS — напоминания о дедлайнах
+// ============================================================
+
+const REMINDER_THRESHOLDS = [7, 30]; // дней до дедлайна
+
+function initReminders() {
+  checkDeadlineReminders();
+  // Проверяем каждые 6 часов
+  setInterval(checkDeadlineReminders, 6 * 60 * 60 * 1000);
+}
+
+function checkDeadlineReminders() {
+  const now = new Date();
+  const todayKey = now.toISOString().slice(0, 10);
+  const shownKey = 'compliance_reminders_' + todayKey;
+  const shown = JSON.parse(localStorage.getItem(shownKey) || '[]');
+
+  const pub = getAllChanges().filter(c => !c.type || c.type === 'published');
+  const reminders = [];
+
+  pub.forEach(c => {
+    if (!c.effectiveDate) return;
+    const d = new Date(c.effectiveDate);
+    const daysLeft = Math.ceil((d - now) / 86400000);
+
+    REMINDER_THRESHOLDS.forEach(threshold => {
+      const key = `${c.id}-${threshold}`;
+      if (daysLeft <= threshold && daysLeft >= 0 && !shown.includes(key)) {
+        reminders.push({ c, daysLeft, key, threshold });
+      }
+    });
+  });
+
+  if (!reminders.length) return;
+
+  // Сохраняем показанные
+  const newShown = [...shown, ...reminders.map(r => r.key)];
+  localStorage.setItem(shownKey, JSON.stringify(newShown));
+
+  // Добавляем в колокольчик
+  addBellNotifications(reminders);
+
+  // Браузерные push-уведомления
+  requestNotificationPermission(() => {
+    reminders.forEach(r => {
+      sendBrowserNotification(
+        r.daysLeft <= 7
+          ? `⚡ Срочно: ${r.daysLeft} дн. до вступления в силу`
+          : `⏱ Напоминание: ${r.daysLeft} дн. до вступления в силу`,
+        r.c.title,
+        r.c.id
+      );
+    });
+  });
+}
+
+// ── Браузерные уведомления ──
+function requestNotificationPermission(callback) {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'granted') { callback(); return; }
+  if (Notification.permission !== 'denied') {
+    Notification.requestPermission().then(p => { if (p === 'granted') callback(); });
+  }
+}
+
+function sendBrowserNotification(title, body, changeId) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const n = new Notification(title, {
+    body,
+    icon: '',  // можно добавить URL иконки
+    tag: changeId,
+    requireInteraction: false
+  });
+  n.onclick = () => {
+    window.focus();
+    openChange(changeId);
+    n.close();
+  };
+  setTimeout(() => n.close(), 8000);
+}
+
+// ── Колокольчик внутри приложения ──
+let bellNotifications = [];
+
+function addBellNotifications(reminders) {
+  reminders.forEach(r => {
+    bellNotifications.unshift({
+      id: r.key,
+      title: r.c.title,
+      text: `До вступления в силу: ${r.daysLeft} дн. (${formatDate(r.c.effectiveDate)})`,
+      changeId: r.c.id,
+      urgent: r.daysLeft <= 7,
+      time: new Date().toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'}),
+      read: false
+    });
+  });
+  // Максимум 20 уведомлений
+  bellNotifications = bellNotifications.slice(0, 20);
+  updateBellBadge();
+  renderBellPanel();
+}
+
+function updateBellBadge() {
+  const unread = bellNotifications.filter(n => !n.read).length;
+  const badge = document.getElementById('bell-badge');
+  if (badge) {
+    badge.textContent = unread || '';
+    badge.style.display = unread ? 'flex' : 'none';
+  }
+}
+
+function toggleBellPanel() {
+  const panel = document.getElementById('bell-panel');
+  if (!panel) return;
+  const isOpen = panel.classList.toggle('open');
+  if (isOpen) {
+    renderBellPanel();
+    // Отмечаем все как прочитанные через 2 сек
+    setTimeout(() => {
+      bellNotifications.forEach(n => n.read = true);
+      updateBellBadge();
+    }, 2000);
+  }
+}
+
+function closeBellPanel() {
+  const panel = document.getElementById('bell-panel');
+  if (panel) panel.classList.remove('open');
+}
+
+function renderBellPanel() {
+  const list = document.getElementById('bell-list');
+  if (!list) return;
+
+  if (!bellNotifications.length) {
+    list.innerHTML = `<div class="bell-empty">
+      <div style="font-size:28px;margin-bottom:8px">🔔</div>
+      <div>Нет новых напоминаний</div>
+      <div style="font-size:11px;margin-top:4px;color:var(--text-3)">Уведомления появятся за 30 и 7 дней до вступления НПА в силу</div>
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = bellNotifications.map(n => `
+    <div class="bell-item ${n.read ? '' : 'bell-unread'} ${n.urgent ? 'bell-urgent' : ''}"
+         onclick="openChange('${n.changeId}');closeBellPanel()">
+      <div class="bell-item-icon">${n.urgent ? '⚡' : '⏱'}</div>
+      <div class="bell-item-body">
+        <div class="bell-item-title">${n.title}</div>
+        <div class="bell-item-text">${n.text}</div>
+        <div class="bell-item-time">${n.time}</div>
+      </div>
+    </div>`).join('');
+}
+
+function clearBellNotifications() {
+  bellNotifications = [];
+  updateBellBadge();
+  renderBellPanel();
+}
+
+// Инициализируем после входа
+function initRemindersAfterLogin() {
+  // Небольшая задержка чтобы данные загрузились
+  setTimeout(initReminders, 2000);
 }
 // ============================================================
 // THEME TOGGLE

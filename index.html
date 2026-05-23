@@ -749,54 +749,51 @@
   <div class="modal-overlay" id="ai-panel-overlay" onclick="closeAiPanel()">
     <div class="modal modal-ai" onclick="event.stopPropagation()">
       <button class="modal-close" onclick="closeAiPanel()">×</button>
-      <div class="modal-cat">🤖 Gemini AI</div>
+      <div class="modal-cat">🤖 ИИ-ассистент</div>
       <div class="modal-title">Автозаполнение карточек НПА</div>
-      <p style="font-size:13px;color:var(--text-2);margin-bottom:16px">
-        Вставьте текст обзора законодательства или загрузите PDF — ИИ извлечёт все изменения и заполнит карточки автоматически.
-      </p>
 
-      <div class="ai-input-tabs">
-        <button class="ai-tab active" onclick="switchAiTab('text',this)">Вставить текст</button>
-        <button class="ai-tab" onclick="switchAiTab('file',this)">Загрузить файл</button>
-        <button class="ai-tab" onclick="switchAiTab('json',this)">📋 JSON от Claude</button>
-      </div>
-
-      <div id="ai-tab-text">
-        <textarea id="ai-input-text" class="comment-textarea"
-          style="width:100%;min-height:160px;margin-bottom:12px"
-          placeholder="Вставьте сюда текст обзора изменений законодательства, письмо от консультантов, выписку из КонсультантПлюс или любой другой текст с описанием НПА…"></textarea>
-      </div>
-
-      <div id="ai-tab-file" style="display:none">
-        <div class="ai-file-drop">
-          <div style="font-size:28px;margin-bottom:8px">📄</div>
-          <div style="font-size:13px;color:var(--text-2);margin-bottom:12px">PDF, TXT или DOC файл</div>
-          <input type="file" id="ai-file-input" accept=".pdf,.txt,.doc,.docx"
-            onchange="loadAiFile(this)" style="display:none">
-          <button class="btn-secondary" onclick="document.getElementById('ai-file-input').click()">
-            Выбрать файл
+      <!-- Подсказка с промптом — только для администратора -->
+      <div class="ai-prompt-hint">
+        <div class="ai-prompt-hint-header">
+          <div class="ai-prompt-hint-title">
+            <span class="ai-prompt-hint-icon">💡</span>
+            Как получить JSON от Claude
+          </div>
+          <button class="ai-prompt-copy-btn" onclick="copyPromptToClipboard()" id="ai-copy-btn">
+            📋 Скопировать промпт
           </button>
         </div>
+        <div class="ai-prompt-steps">
+          <div class="ai-prompt-step">
+            <span class="ai-prompt-step-num">1</span>
+            <span>Откройте <a href="https://claude.ai" target="_blank" style="color:var(--accent)">claude.ai</a> в новой вкладке</span>
+          </div>
+          <div class="ai-prompt-step">
+            <span class="ai-prompt-step-num">2</span>
+            <span>Нажмите «Скопировать промпт» → вставьте в Claude → добавьте текст НПА в конец</span>
+          </div>
+          <div class="ai-prompt-step">
+            <span class="ai-prompt-step-num">3</span>
+            <span>Скопируйте JSON-ответ → вставьте в поле ниже → нажмите «Загрузить»</span>
+          </div>
+          <div class="ai-prompt-step">
+            <span class="ai-prompt-step-num">4</span>
+            <span>Проверьте карточки, при необходимости отредактируйте → опубликуйте</span>
+          </div>
+        </div>
+        <div class="ai-prompt-preview">
+          <div class="ai-prompt-preview-label">Промпт для Claude:</div>
+          <div class="ai-prompt-preview-text" id="ai-prompt-text">Ты — юридический ассистент компании Marshall (дистрибуция автозапчастей, Россия). Проанализируй текст и извлеки ВСЕ изменения законодательства. Для каждого НПА верни JSON с полями: type ("published"/"draft"), category, title (до 100 символов), summary (2-4 предложения), normAct, effectiveDate (YYYY-MM-DD), sanctions, criticality ("Высокая"/"Средняя"/"Низкая"/"Отсутствует"), impact (влияние на Marshall), mitigation (что сделать), deadline, departments (из: ФЭД, ДМ, ОД, КД, ДЦТ, ДУП), status ("Учесть в работе"/"Для информации"/"Мониторинг"), probability, plannedDate, regulationUrl. Верни ТОЛЬКО валидный JSON-массив без пояснений и markdown. Текст для анализа: [ВСТАВЬТЕ ТЕКСТ]</div>
+        </div>
       </div>
 
-      <div id="ai-tab-json" style="display:none">
-        <div style="background:var(--bg-3);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px;font-size:12px;color:var(--text-2);line-height:1.6">
-          <strong style="color:var(--text)">Как использовать:</strong><br>
-          1. Скопируйте промпт из README или попросите Claude проанализировать текст НПА<br>
-          2. Получите JSON-ответ от Claude<br>
-          3. Вставьте JSON сюда и нажмите «Загрузить»
-        </div>
-        <textarea id="ai-json-input" class="comment-textarea"
-          style="width:100%;min-height:160px;font-family:var(--mono);font-size:12px;margin-bottom:8px"
-          placeholder='[{"type":"published","category":"...","title":"..."}]'></textarea>
-        <button class="btn-secondary" style="width:100%" onclick="loadJsonFromClaude()">
-          📋 Загрузить JSON
-        </button>
-      </div>
+      <textarea id="ai-json-input" class="comment-textarea"
+        style="width:100%;min-height:180px;font-family:var(--mono);font-size:12px;margin-bottom:10px"
+        placeholder='[{"type":"published","category":"...","title":"...","summary":"..."}]'></textarea>
 
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
-        <button class="btn-ai-analyze" id="ai-analyze-btn" onclick="runAiAnalysis()">
-          🤖 Анализировать
+        <button class="btn-ai-analyze" onclick="loadJsonFromClaude()">
+          📋 Загрузить и проверить
         </button>
         <span id="ai-status" style="font-size:12px;color:var(--text-2)"></span>
       </div>

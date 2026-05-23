@@ -2039,37 +2039,9 @@ function closeLoginHelp() {
 // ============================================================
 // GEMINI AI — автозаполнение карточек НПА
 // ============================================================
-const GEMINI_API_KEY = 'AIzaSyAN6c7-RpRbqRyBC2Ewv7vk9KXcppuAp-0';
-const GEMINI_URL     = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=' + GEMINI_API_KEY;
+// AI-ассистент: анализ через Claude + JSON (см. README)
 
-async function analyzeWithGemini(text) {
-  // Обрезаем до 12000 символов чтобы не превысить лимит токенов
-  if (text.length > 12000) {
-    text = text.substring(0, 12000) + '\n\n[текст обрезан]';
-  }
-  const prompt = `Ты — юридический ассистент компании Marshall (дистрибуция автозапчастей, работа в России).
 
-Проанализируй следующий текст и извлеки ВСЕ изменения законодательства / нормативно-правовые акты / законопроекты.
-Для каждого НПА верни JSON-объект со следующими полями:
-
-{
-  "type": "published" или "draft" (published — уже принят/вступил в силу, draft — законопроект),
-  "category": "краткая категория (напр. Трудовое право / Приём на работу)",
-  "title": "краткое название изменения (до 100 символов)",
-  "summary": "подробное описание сути изменения (2-4 предложения)",
-  "normAct": "название и реквизиты нормативного акта",
-  "effectiveDate": "дата вступления в силу в формате YYYY-MM-DD или пустая строка",
-  "sanctions": "штрафные санкции если есть, иначе пустая строка",
-  "criticality": "Высокая / Средняя / Низкая / Отсутствует",
-  "impact": "как это влияет на деятельность компании по дистрибуции автозапчастей",
-  "mitigation": "что нужно сделать компании для соблюдения требований",
-  "deadline": "срок адаптации или пустая строка",
-  "departments": ["список департаментов из: ФЭД, ДМ, ОД, КД, ДЦТ, ДУП"],
-  "status": "Учесть в работе / Для информации / Мониторинг",
-  "probability": "вероятность принятия для законопроектов или пустая строка",
-  "plannedDate": "плановая дата принятия для законопроектов или пустая строка",
-  "regulationUrl": "ссылка на regulation.gov.ru если упоминается, иначе пустая строка"
-}
 
 Верни ТОЛЬКО валидный JSON-массив объектов, без пояснений, без markdown-разметки, без тройных кавычек.
 Если НПА один — верни массив из одного элемента.
@@ -2097,6 +2069,35 @@ ${text}`;
   return JSON.parse(clean);
 }
 
+
+// ── Копировать промпт для Claude ──
+function copyPromptToClipboard() {
+  const prompt = document.getElementById('ai-prompt-text')?.textContent || '';
+  navigator.clipboard.writeText(prompt).then(() => {
+    const btn = document.getElementById('ai-copy-btn');
+    if (btn) {
+      btn.textContent = '✓ Скопировано!';
+      btn.style.background = 'var(--low-bg)';
+      btn.style.color = 'var(--low)';
+      btn.style.borderColor = 'rgba(39,174,96,0.3)';
+      setTimeout(() => {
+        btn.textContent = '📋 Скопировать промпт';
+        btn.style.background = '';
+        btn.style.color = '';
+        btn.style.borderColor = '';
+      }, 2500);
+    }
+  }).catch(() => {
+    // Fallback для старых браузеров
+    const el = document.createElement('textarea');
+    el.value = prompt;
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand('copy');
+    document.body.removeChild(el);
+    showToast('✓ Промпт скопирован', 'success');
+  });
+}
 // ── Загрузить JSON от Claude ──
 function loadJsonFromClaude() {
   const raw = document.getElementById('ai-json-input').value.trim();
@@ -2124,7 +2125,8 @@ function loadJsonFromClaude() {
 // ── Открыть AI-панель ──
 function openAiPanel() {
   document.getElementById('ai-panel-overlay').classList.add('open');
-  document.getElementById('ai-input-text').value = '';
+  const ji = document.getElementById('ai-json-input');
+  if (ji) ji.value = '';
   document.getElementById('ai-results').innerHTML = '';
   document.getElementById('ai-btn-publish').style.display = 'none';
   document.getElementById('ai-status').textContent = '';
@@ -2134,34 +2136,7 @@ function closeAiPanel() {
   document.getElementById('ai-panel-overlay').classList.remove('open');
 }
 
-// ── Анализ текста ──
-async function runAiAnalysis() {
-  const text = document.getElementById('ai-input-text').value.trim();
-  if (!text) { showToast('Вставьте текст для анализа', 'error'); return; }
 
-  const btn    = document.getElementById('ai-analyze-btn');
-  const status = document.getElementById('ai-status');
-  btn.disabled = true;
-  btn.textContent = '🤖 Анализирую…';
-  status.textContent = 'Gemini обрабатывает текст…';
-  document.getElementById('ai-results').innerHTML = '';
-  document.getElementById('ai-btn-publish').style.display = 'none';
-
-  try {
-    const items = await analyzeWithGemini(text);
-    if (!items || !items.length) throw new Error('ИИ не нашёл НПА в тексте');
-
-    status.textContent = `Найдено изменений: ${items.length}. Проверьте и выберите для публикации.`;
-    renderAiResults(items);
-    document.getElementById('ai-btn-publish').style.display = 'block';
-  } catch(e) {
-    status.textContent = 'Ошибка: ' + e.message;
-    showToast('Ошибка анализа: ' + e.message, 'error');
-  } finally {
-    btn.disabled    = false;
-    btn.textContent = '🤖 Анализировать';
-  }
-}
 
 // ── Рендер результатов ──
 let aiParsedItems = [];
@@ -2327,77 +2302,9 @@ async function publishAiResults() {
   btn.textContent = '✓ Опубликовать выбранные';
 }
 
-// ── Загрузка PDF ──
-async function loadAiFile(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const status = document.getElementById('ai-status');
-  status.textContent = 'Читаю файл…';
 
-  if (file.type === 'application/pdf') {
-    // PDF → base64 → Gemini vision
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const b64  = reader.result.split(',')[1];
-      const text = `[PDF файл: ${file.name}]\n\nСодержимое файла прикреплено как base64.`;
-      document.getElementById('ai-input-text').value = text;
-      // Для PDF используем inline_data
-      await analyzeFileWithGemini(b64, file.type, file.name);
-    };
-    reader.readAsDataURL(file);
-  } else {
-    // Текстовый файл
-    const reader = new FileReader();
-    reader.onload = e => {
-      document.getElementById('ai-input-text').value = e.target.result;
-      status.textContent = 'Файл загружен. Нажмите «Анализировать».';
-    };
-    reader.readAsText(file, 'utf-8');
-  }
-}
 
-async function analyzeFileWithGemini(b64, mimeType, fileName) {
-  const btn    = document.getElementById('ai-analyze-btn');
-  const status = document.getElementById('ai-status');
-  btn.disabled    = true;
-  btn.textContent = '🤖 Анализирую PDF…';
-  status.textContent = `Gemini читает ${fileName}…`;
 
-  const prompt = `Ты — юридический ассистент компании Marshall (дистрибуция автозапчастей, Россия).
-Проанализируй прикреплённый документ и извлеки ВСЕ изменения законодательства.
-Для каждого НПА верни JSON-объект с полями: type, category, title, summary, normAct, effectiveDate, sanctions, criticality, impact, mitigation, deadline, departments (из: ФЭД,ДМ,ОД,КД,ДЦТ,ДУП), status, probability, plannedDate, regulationUrl.
-Верни ТОЛЬКО валидный JSON-массив, без markdown.`;
-
-  try {
-    const res = await fetch(GEMINI_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: prompt },
-            { inline_data: { mime_type: mimeType, data: b64 } }
-          ]
-        }],
-        generationConfig: { temperature: 0.1, maxOutputTokens: 8192 }
-      })
-    });
-
-    const data  = await res.json();
-    const raw   = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    const clean = raw.replace(/\`\`\`json|\`\`\`/g, '').trim();
-    const items = JSON.parse(clean);
-
-    status.textContent = `Найдено изменений: ${items.length}`;
-    renderAiResults(items);
-    document.getElementById('ai-btn-publish').style.display = 'block';
-  } catch(e) {
-    status.textContent = 'Ошибка анализа PDF: ' + e.message;
-  } finally {
-    btn.disabled    = false;
-    btn.textContent = '🤖 Анализировать';
-  }
-}
 // ============================================================
 // REMINDERS — напоминания о дедлайнах
 // ============================================================

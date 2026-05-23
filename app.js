@@ -664,30 +664,68 @@ function closeModal() {
 // ============================================================
 function renderCommentsSection(id) {
   const comments = getComments(id);
-  const userNote = currentUser
-    ? `Вы вошли как: <strong>${currentUser}</strong> (${currentEmail})`
-    : '<span style="color:var(--high)">Роль не определена</span>';
+
+  function oneComment(cm, idx) {
+    const isOwn  = cm.email === currentEmail;
+    const isAdm  = isAdmin();
+    const canEdit = isOwn && cm.type !== 'ack';
+    const canDel  = isOwn || isAdm;
+    const typeLabel = cm.type === 'ack' ? '✓ Ознакомлен' : cm.type === 'issue' ? '⚠ Вопрос' : '💬 Комментарий';
+    const replies = cm.replies || [];
+
+    if (cm._editing) {
+      return `<div class="comment-item type-${cm.type}" style="background:var(--bg-4)">
+        <textarea class="comment-textarea" id="cedit-${id}-${idx}" style="width:100%;min-height:60px">${cm.text||''}</textarea>
+        <div style="display:flex;gap:8px;margin-top:6px">
+          <button class="comment-submit" style="padding:6px 14px;font-size:11px" onclick="saveEditComment('${id}',${idx})">Сохранить</button>
+          <button class="btn-secondary" style="padding:6px 12px;font-size:11px" onclick="cancelEditComment('${id}',${idx})">Отмена</button>
+        </div>
+      </div>`;
+    }
+
+    const repliesHtml = replies.map((r, ri) => `
+      <div class="reply-item">
+        <div class="comment-meta">
+          <span class="comment-author">${r.author}</span>
+          <span class="comment-time">${r.time}</span>
+          ${isOwn || isAdm ? `<button class="cmt-action-btn cmt-delete" style="margin-left:auto" onclick="deleteReply('${id}',${idx},${ri})">✕</button>` : ''}
+        </div>
+        ${r.text ? `<div class="comment-text">${r.text}</div>` : ''}
+      </div>`).join('');
+
+    return `<div class="comment-item type-${cm.type}">
+      <div class="comment-meta">
+        <span class="comment-author">${cm.author}</span>
+        <span class="comment-time">${cm.time}</span>
+        <span class="comment-type-badge ${cm.type}">${typeLabel}</span>
+        <div class="comment-actions">
+          <button class="cmt-action-btn" onclick="toggleReplyForm('${id}',${idx})">↩ Ответить</button>
+          ${canEdit ? `<button class="cmt-action-btn" onclick="startEditComment('${id}',${idx})">✎</button>` : ''}
+          ${canDel  ? `<button class="cmt-action-btn cmt-delete" onclick="deleteComment('${id}',${idx})">✕</button>` : ''}
+        </div>
+      </div>
+      ${cm.dept || cm.email ? `<div class="comment-dept">${[cm.dept, cm.email].filter(Boolean).join(' · ')}</div>` : ''}
+      ${cm.text ? `<div class="comment-text${cm.edited?' comment-text-edited':''}">${cm.text}</div>` : ''}
+      ${replies.length ? `<div class="comment-replies">${repliesHtml}</div>` : ''}
+      <div class="reply-form" id="reply-form-${id}-${idx}" style="display:none">
+        <textarea class="comment-textarea" id="reply-text-${id}-${idx}"
+          placeholder="Ответить ${cm.author}…" style="min-height:52px"></textarea>
+        <div style="display:flex;gap:8px;margin-top:6px">
+          <button class="comment-submit" style="padding:6px 14px;font-size:11px" onclick="submitReply('${id}',${idx})">Отправить</button>
+          <button class="btn-secondary" style="padding:6px 12px;font-size:11px" onclick="toggleReplyForm('${id}',${idx})">Отмена</button>
+        </div>
+      </div>
+    </div>`;
+  }
 
   const commentsHtml = comments.length
-    ? comments.map(cm => `
-      <div class="comment-item type-${cm.type}">
-        <div class="comment-meta">
-          <span class="comment-author">${cm.author}</span>
-          <span class="comment-time">${cm.time}</span>
-          <span class="comment-type-badge ${cm.type}">${
-            cm.type === 'ack' ? '✓ Ознакомлен' : cm.type === 'issue' ? '⚠ Вопрос' : '💬 Комментарий'
-          }</span>
-        </div>
-        ${cm.email ? `<div style="font-size:11px;color:var(--text-3);margin-bottom:4px">${cm.email}</div>` : ''}
-        ${cm.text  ? `<div class="comment-text">${cm.text}</div>` : ''}
-      </div>`).join('')
+    ? comments.map((cm, idx) => oneComment(cm, idx)).join('')
     : '<div style="color:var(--text-3);font-size:13px;padding:8px 0">Комментариев пока нет</div>';
 
   return `<div class="comments-section">
     <h4>Комментарии и ознакомления (${comments.length})</h4>
     ${commentsHtml}
-    <div class="comment-form">
-      <div class="comment-user-note">${userNote}</div>
+    <div class="comment-form" style="margin-top:16px">
       <div class="comment-form-row">
         <select class="comment-type-select" id="ctype-${id}">
           <option value="ack">✓ Ознакомлен(а)</option>

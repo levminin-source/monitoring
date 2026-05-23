@@ -758,6 +758,7 @@
       <div class="ai-input-tabs">
         <button class="ai-tab active" onclick="switchAiTab('text',this)">Вставить текст</button>
         <button class="ai-tab" onclick="switchAiTab('file',this)">Загрузить файл</button>
+        <button class="ai-tab" onclick="switchAiTab('json',this)">📋 JSON от Claude</button>
       </div>
 
       <div id="ai-tab-text">
@@ -776,6 +777,21 @@
             Выбрать файл
           </button>
         </div>
+      </div>
+
+      <div id="ai-tab-json" style="display:none">
+        <div style="background:var(--bg-3);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px;font-size:12px;color:var(--text-2);line-height:1.6">
+          <strong style="color:var(--text)">Как использовать:</strong><br>
+          1. Скопируйте промпт из README или попросите Claude проанализировать текст НПА<br>
+          2. Получите JSON-ответ от Claude<br>
+          3. Вставьте JSON сюда и нажмите «Загрузить»
+        </div>
+        <textarea id="ai-json-input" class="comment-textarea"
+          style="width:100%;min-height:160px;font-family:var(--mono);font-size:12px;margin-bottom:8px"
+          placeholder='[{"type":"published","category":"...","title":"..."}]'></textarea>
+        <button class="btn-secondary" style="width:100%" onclick="loadJsonFromClaude()">
+          📋 Загрузить JSON
+        </button>
       </div>
 
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">

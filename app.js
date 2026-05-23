@@ -2042,62 +2042,6 @@ function closeLoginHelp() {
 // AI-ассистент: анализ через Claude + JSON (см. README)
 
 
-
-Верни ТОЛЬКО валидный JSON-массив объектов, без пояснений, без markdown-разметки, без тройных кавычек.
-Если НПА один — верни массив из одного элемента.
-
-Текст для анализа:
-${text}`;
-
-  const res = await fetch(GEMINI_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.1, maxOutputTokens: 8192 }
-    })
-  });
-
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.error?.message || 'Ошибка Gemini API');
-  }
-
-  const data = await res.json();
-  const raw  = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  const clean = raw.replace(/```json|```/g, '').trim();
-  return JSON.parse(clean);
-}
-
-
-// ── Копировать промпт для Claude ──
-function copyPromptToClipboard() {
-  const prompt = document.getElementById('ai-prompt-text')?.textContent || '';
-  navigator.clipboard.writeText(prompt).then(() => {
-    const btn = document.getElementById('ai-copy-btn');
-    if (btn) {
-      btn.textContent = '✓ Скопировано!';
-      btn.style.background = 'var(--low-bg)';
-      btn.style.color = 'var(--low)';
-      btn.style.borderColor = 'rgba(39,174,96,0.3)';
-      setTimeout(() => {
-        btn.textContent = '📋 Скопировать промпт';
-        btn.style.background = '';
-        btn.style.color = '';
-        btn.style.borderColor = '';
-      }, 2500);
-    }
-  }).catch(() => {
-    // Fallback для старых браузеров
-    const el = document.createElement('textarea');
-    el.value = prompt;
-    document.body.appendChild(el);
-    el.select();
-    document.execCommand('copy');
-    document.body.removeChild(el);
-    showToast('✓ Промпт скопирован', 'success');
-  });
-}
 // ── Загрузить JSON от Claude ──
 function loadJsonFromClaude() {
   const raw = document.getElementById('ai-json-input').value.trim();

@@ -29,7 +29,7 @@ let store = { comments: {}, acknowledgements: {}, extraChanges: [] };
 let db    = null;
 let auth  = null;
 
-const CONFIGURED = FIREBASE_CONFIG.apiKey !== 'YOUR_API_KEY';
+const CONFIGURED = FIREBASE_CONFIG.apiKey !== 'AIzaSyDD_IwbIN87V6VXWqpTKkEV3aEfh8ZQw8k';
 
 // ============================================================
 // MARSHALL BRAND ASSETS (SVG)
@@ -1738,7 +1738,7 @@ const EMAILJS_SERVICE_ID  = 'service_u7mo4k9';
 const EMAILJS_TEMPLATE_ID = 'template_zmp7g7t';
 const EMAILJS_PUBLIC_KEY  = 'TEl016U64K4jHvw9z';
 
-const EMAILJS_CONFIGURED = EMAILJS_SERVICE_ID !== 'YOUR_SERVICE_ID';
+const EMAILJS_CONFIGURED = EMAILJS_SERVICE_ID !== 'service_u7mo4k9';
 
 // Инициализация SDK
 function initEmailJS() {

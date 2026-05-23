@@ -2039,10 +2039,14 @@ function closeLoginHelp() {
 // ============================================================
 // GEMINI AI — автозаполнение карточек НПА
 // ============================================================
-const GEMINI_API_KEY = 'PLACEHOLDER_GEMINI_KEY';
-const GEMINI_URL     = 'https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=' + GEMINI_API_KEY;
+const GEMINI_API_KEY = 'AIzaSyDWUWok60YMbmUjG0-_RlvgGg7JAjJTj44';
+const GEMINI_URL     = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=' + GEMINI_API_KEY;
 
 async function analyzeWithGemini(text) {
+  // Обрезаем до 12000 символов чтобы не превысить лимит токенов
+  if (text.length > 12000) {
+    text = text.substring(0, 12000) + '\n\n[текст обрезан]';
+  }
   const prompt = `Ты — юридический ассистент компании Marshall (дистрибуция автозапчастей, работа в России).
 
 Проанализируй следующий текст и извлеки ВСЕ изменения законодательства / нормативно-правовые акты / законопроекты.

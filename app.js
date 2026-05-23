@@ -4,12 +4,12 @@
 // FIREBASE CONFIG — вставьте свои значения из Firebase Console
 // ============================================================
 const FIREBASE_CONFIG = {
-  apiKey:            "AIzaSyDD_IwbIN87V6VXWqpTKkEV3aEfh8ZQw8k",
+  apiKey:            "PLACEHOLDER_FIREBASE_API_KEY",
   authDomain:        "marshall-compliance-monitor.firebaseapp.com",
   projectId:         "marshall-compliance-monitor",
   storageBucket:     "marshall-compliance-monitor.firebasestorage.app",
-  messagingSenderId: "417137979657",
-  appId:             "1:417137979657:web:936c1706379c270c5c23d8"
+  messagingSenderId: "PLACEHOLDER_SENDER_ID",
+  appId:             "PLACEHOLDER_APP_ID"
 };
 
 // ============================================================
@@ -1734,9 +1734,9 @@ async function rejectProposal(id) {
 // EMAIL NOTIFICATIONS (EmailJS)
 // Инструкция по настройке — в README.md
 // ============================================================
-const EMAILJS_SERVICE_ID  = 'service_u7mo4k9';
-const EMAILJS_TEMPLATE_ID = 'template_zmp7g7t';
-const EMAILJS_PUBLIC_KEY  = 'TEl016U64K4jHvw9z';
+const EMAILJS_SERVICE_ID  = 'PLACEHOLDER_EMAILJS_SID';
+const EMAILJS_TEMPLATE_ID = 'PLACEHOLDER_EMAILJS_TID';
+const EMAILJS_PUBLIC_KEY  = 'PLACEHOLDER_EMAILJS_KEY';
 
 const EMAILJS_CONFIGURED = EMAILJS_SERVICE_ID !== 'YOUR_SERVICE_ID';
 
@@ -2039,7 +2039,7 @@ function closeLoginHelp() {
 // ============================================================
 // GEMINI AI — автозаполнение карточек НПА
 // ============================================================
-const GEMINI_API_KEY = 'AIzaSyAN6c7-RpRbqRyBC2Ewv7vk9KXcppuAp-0';
+const GEMINI_API_KEY = 'PLACEHOLDER_GEMINI_KEY';
 const GEMINI_URL     = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + GEMINI_API_KEY;
 
 async function analyzeWithGemini(text) {

@@ -2097,6 +2097,30 @@ ${text}`;
   return JSON.parse(clean);
 }
 
+// ── Загрузить JSON от Claude ──
+function loadJsonFromClaude() {
+  const raw = document.getElementById('ai-json-input').value.trim();
+  if (!raw) { showToast('Вставьте JSON от Claude', 'error'); return; }
+
+  try {
+    // Чистим от markdown если есть
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const items = JSON.parse(clean);
+
+    if (!Array.isArray(items) || !items.length) {
+      showToast('JSON должен быть массивом объектов', 'error');
+      return;
+    }
+
+    document.getElementById('ai-status').textContent = `Найдено изменений: ${items.length}`;
+    renderAiResults(items);
+    document.getElementById('ai-btn-publish').style.display = 'block';
+    showToast(`✓ Загружено ${items.length} записей`, 'success');
+  } catch(e) {
+    showToast('Ошибка разбора JSON: ' + e.message, 'error');
+  }
+}
+
 // ── Открыть AI-панель ──
 function openAiPanel() {
   document.getElementById('ai-panel-overlay').classList.add('open');

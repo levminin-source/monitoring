@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<!-- v2.1 FIXED: filters + mobile -->
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Compliance Monitor — Marshall</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script>
+    // Антимигание: применяем тему до рендера
+    (function() {
+      const t = localStorage.getItem('compliance_theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
+  <style>
+    #loading-bar {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #C8102E, #e8759a, #C8102E);
+      background-size: 200% 100%;
+      animation: loadingSlide 1.2s linear infinite;
+      z-index: 9999;
+    }
+    @keyframes loadingSlide {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* ── LOGIN SCREEN ── */
+    #login-screen {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      z-index: 500;
+      align-items: center;
+      justify-content: center;
+    }
+    #login-screen.visible { display: flex; }
+
+    .login-card {
+      background: var(--bg-2);
+      border: 1px solid var(--border-hover);
+      border-top: 3px solid var(--accent);
+      border-radius: 12px;
+      padding: 40px 44px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.6);
+    }
+    .login-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+    .login-brand-icon {
+      width: 42px; height: 42px;
+      background: var(--accent);
+      border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; font-weight: 900; color: #fff;
+      font-family: var(--font);
+    }
+    .login-brand-text { display: flex; flex-direction: column; line-height: 1.2; }
+    .login-brand-name { font-size: 16px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+    .login-brand-sub  { font-size: 10px; color: var(--text-3); letter-spacing: 0.1em; text-transform: uppercase; }
+
+    .login-title {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      margin-bottom: 6px;
+    }
+    .login-subtitle {
+      font-size: 13px;
+      color: var(--text-2);
+      margin-bottom: 28px;
+      line-height: 1.5;
+    }
+
+    .login-field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      margin-bottom: 14px;
+    }
+    .login-field label {
+      font-size: 10px;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      font-weight: 700;
+    }
+    .login-field input {
+      background: var(--bg-3);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 14px;
+      padding: 11px 14px;
+      outline: none;
+      transition: border 0.15s;
+      width: 100%;
+    }
+    .login-field input:focus { border-color: var(--accent); }
+    .login-field input::placeholder { color: var(--text-3); }
+
+    .login-role-field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      margin-bottom: 24px;
+    }
+    .login-role-field label {
+      font-size: 10px;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      font-weight: 700;
+    }
+    .login-role-field select {
+      background: var(--bg-3);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 14px;
+      padding: 11px 14px;
+      outline: none;
+      transition: border 0.15s;
+      width: 100%;
+      cursor: pointer;
+    }
+    .login-role-field select:focus { border-color: var(--accent); }
+
+    .login-btn {
+      width: 100%;
+      padding: 13px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-family: var(--font);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.15s;
+      margin-bottom: 12px;
+    }
+    .login-btn:hover { background: var(--accent-light); transform: translateY(-1px); }
+    .login-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    .login-error {
+      display: none;
+      background: var(--high-bg);
+      border: 1px solid rgba(232,41,74,0.3);
+      border-radius: 6px;
+      color: var(--high);
+      font-size: 12px;
+      padding: 10px 12px;
+      margin-top: 10px;
+      line-height: 1.5;
+    }
+    .login-error.visible { display: block; }
+
+    .login-footer {
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      font-size: 11px;
+      color: var(--text-3);
+      text-align: center;
+      line-height: 1.6;
+    }
+
+    /* ── USER CHIP in top bar ── */
+    .user-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg-3);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .user-chip-avatar {
+      width: 22px; height: 22px;
+      background: var(--accent);
+      border-radius: 3px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 800; color: #fff;
+      flex-shrink: 0;
+    }
+    .user-chip-name { color: var(--text); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .user-chip-role { color: var(--text-3); font-size: 11px; }
+    .user-chip-logout {
+      background: none; border: none; color: var(--text-3);
+      cursor: pointer; font-size: 14px; padding: 0 0 0 4px;
+      transition: color 0.15s; line-height: 1;
+    }
+    .user-chip-logout:hover { color: var(--high); }
+  </style>
+</head>
+<body>
+  <div id="loading-bar"></div>
+  <div class="ack-banner" id="ack-banner"></div>
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+  <!-- LOGIN SCREEN -->
+  <div id="login-screen" class="visible">
+    <div class="login-card">
+      <div class="login-brand">
+        <img src="data:image/png;base64,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" class="login-logo-svg" alt="Marshall">
+      </div>
+      <div class="login-title">Вход в систему</div>
+      <div class="login-subtitle">Доступ только для сотрудников компании Marshall.<br>Введите корпоративный email и пароль.</div>
+
+      <div class="login-field">
+        <label>Email</label>
+        <input type="email" id="login-email" placeholder="ivanov@marshall.com" autocomplete="email">
+      </div>
+      <div class="login-field">
+        <label>Пароль</label>
+        <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password"
+               onkeydown="if(event.key==='Enter') submitLogin()">
+      </div>
+
+      <button class="login-btn" id="login-btn" onclick="submitLogin()">Войти</button>
+      <div class="login-error" id="login-error"></div>
+
+      <div class="login-footer">
+        Нет доступа? Обратитесь к юридическому департаменту.<br>
+        Ваш департамент и имя определяются автоматически по email.
+      </div>
+      <div style="text-align:center;margin-top:16px">
+        <button onclick="showLoginHelp()" style="background:none;border:none;color:var(--accent);font-family:var(--font);font-size:13px;cursor:pointer;text-decoration:underline;padding:0">
+          ❓ Как работать с системой?
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN APP (hidden until logged in) -->
+  <div id="app" style="display:none">
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-logo-wrap">
+          <img src="data:image/png;base64,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" class="brand-logo-icon" alt="Marshall">
+          <div class="brand-text">
+            <span class="brand-name">MARSHALL</span>
+            <span class="brand-sub">Compliance Monitor</span>
+          </div>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-view="dashboard" onclick="setView('dashboard')">
+          <span class="nav-icon">◈</span> Обзор
+        </button>
+        <button class="nav-item" data-view="published" onclick="setView('published')">
+          <span class="nav-icon">◉</span> Опубликованные
+          <span class="nav-badge" id="badge-published">5</span>
+        </button>
+        <button class="nav-item" data-view="draft" onclick="setView('draft')">
+          <span class="nav-icon">◎</span> Проектные
+          <span class="nav-badge" id="badge-draft">4</span>
+        </button>
+        <button class="nav-item" data-view="comments" onclick="setView('comments')">
+          <span class="nav-icon">◷</span> Комментарии
+          <span class="nav-badge pending" id="badge-comments">0</span>
+        </button>
+        <button class="nav-item" id="nav-admin" data-view="admin-editor" onclick="setView('admin-editor')" style="display:none">
+          <span class="nav-icon">⚙</span> Редактор НПА
+          <span class="admin-badge-pill">ADMIN</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-divider"></div>
+
+      <div class="sidebar-section-label">Департаменты</div>
+      <div class="dept-filters" id="dept-filters"></div>
+
+      <div class="sidebar-divider"></div>
+
+      <div class="sidebar-section-label">Критичность</div>
+      <div class="crit-filters">
+        <button class="crit-btn all active" onclick="filterCrit('all')" data-crit="all">Все</button>
+        <button class="crit-btn high"   onclick="filterCrit('Высокая')" data-crit="Высокая">Высокая</button>
+        <button class="crit-btn medium" onclick="filterCrit('Средняя')" data-crit="Средняя">Средняя</button>
+        <button class="crit-btn low"    onclick="filterCrit('Низкая')" data-crit="Низкая">Низкая</button>
+        <button class="crit-btn none"   onclick="filterCrit('Отсутствует')" data-crit="Отсутствует">Нет риска</button>
+      </div>
+
+      <div class="sidebar-bottom">
+        <button class="btn-admin" id="btn-add-change" onclick="openAdminPanel()" style="display:none">⊕ Добавить изменение</button>
+        <button class="btn-export" onclick="openExportModal()">↓ Экспорт отчёта</button>
+        <button class="btn-propose" id="btn-propose" onclick="openProposalModal()">✉ Предложить изменение</button>
+        <div class="quarter-badge">Q1 · 2026</div>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+      <header class="top-bar">
+        <div class="top-bar-left">
+          <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+          <div class="page-title" id="page-title">Обзор</div>
+        </div>
+        <div class="top-bar-right">
+          <div class="search-wrapper">
+            <input type="text" id="search-input" placeholder="Поиск по изменениям…" oninput="filterSearch(this.value)">
+            <span class="search-icon">⌕</span>
+          </div>
+          <!-- Tour button -->
+          <button class="tour-btn" id="tour-btn" onclick="startTour()" title="Обучающий тур">?</button>
+
+          <!-- Bell notifications -->
+          <div class="bell-wrapper" id="bell-wrapper">
+            <button class="bell-btn" onclick="toggleBellPanel()" title="Напоминания">
+              🔔
+              <span class="bell-badge" id="bell-badge" style="display:none">0</span>
+            </button>
+            <div class="bell-panel" id="bell-panel">
+              <div class="bell-panel-header">
+                <span>Напоминания о дедлайнах</span>
+                <button class="bell-clear" onclick="clearBellNotifications()">Очистить</button>
+              </div>
+              <div class="bell-list" id="bell-list"></div>
+              <div class="bell-panel-footer">
+                <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-2);cursor:pointer">
+                  <input type="checkbox" id="notif-permission-btn"
+                    onchange="this.checked && requestNotificationPermission(()=>{})">
+                  Разрешить браузерные уведомления
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Theme toggle -->
+          <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Переключить тему">
+            <span class="theme-toggle-icon" id="theme-icon">☀</span>
+            <div class="theme-toggle-track">
+              <div class="theme-toggle-thumb"></div>
+            </div>
+          </button>
+
+          <!-- User chip — заполняется после входа -->
+          <div class="user-chip" id="user-chip">
+            <div class="user-chip-avatar" id="user-chip-avatar">?</div>
+            <div>
+              <div class="user-chip-name" id="user-chip-name">—</div>
+              <div class="user-chip-role" id="user-chip-role">—</div>
+            </div>
+            <button class="user-chip-logout" onclick="logout()" title="Выйти">⏻</button>
+          </div>
+        </div>
+      </header>
+
+      <!-- MOBILE SEARCH -->
+      <div class="mobile-search">
+        <input type="text" placeholder="Поиск по изменениям…" oninput="filterSearch(this.value)">
+      </div>
+
+      <!-- DASHBOARD VIEW -->
+      <div id="view-dashboard" class="view active">
+        <div class="dashboard-grid">
+          <div class="stat-card stat-total">
+            <div class="stat-number" id="stat-total">9</div>
+            <div class="stat-label">Всего изменений</div>
+          </div>
+          <div class="stat-card stat-high">
+            <div class="stat-number" id="stat-high">0</div>
+            <div class="stat-label">Высокая критичность</div>
+          </div>
+          <div class="stat-card stat-medium">
+            <div class="stat-number" id="stat-medium">0</div>
+            <div class="stat-label">Средняя критичность</div>
+          </div>
+          <div class="stat-card stat-pending">
+            <div class="stat-number" id="stat-pending">0</div>
+            <div class="stat-label">Ожидают подтверждения</div>
+          </div>
+        </div>
+
+        <div class="dashboard-row">
+          <div class="card">
+            <div class="card-header">
+              <h3>Срочные к исполнению</h3>
+              <span class="card-hint">по дате вступления</span>
+            </div>
+            <div id="urgent-list" class="urgent-list"></div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <h3>Статус ознакомления</h3>
+              <span class="card-hint">по департаментам</span>
+            </div>
+            <div id="ack-summary" class="ack-summary"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>Compliance-дайджест Q1 2026</h3>
+            <span class="card-hint">сформирован автоматически</span>
+          </div>
+          <div class="digest-grid" id="digest-grid"></div>
+        </div>
+      </div>
+
+      <!-- PUBLISHED VIEW -->
+      <div id="view-published" class="view">
+        <div class="ack-filter-bar">
+          <span class="ack-filter-label">Ознакомление:</span>
+          <button class="ack-filter-btn active" data-ack="all"    onclick="filterAck('all')">Все</button>
+          <button class="ack-filter-btn"         data-ack="unread" onclick="filterAck('unread')">Не ознакомлен</button>
+          <button class="ack-filter-btn"         data-ack="read"   onclick="filterAck('read')">Ознакомлен</button>
+          <label class="search-comments-toggle">
+            <input type="checkbox" onchange="toggleSearchComments(this)"> Искать в комментариях
+          </label>
+        </div>
+        <div class="changes-list" id="list-published"></div>
+      </div>
+
+      <!-- DRAFT VIEW -->
+      <div id="view-draft" class="view">
+        <div class="changes-list" id="list-draft"></div>
+      </div>
+
+      <!-- COMMENTS VIEW -->
+      <div id="view-comments" class="view">
+        <div class="card">
+          <div class="card-header">
+            <h3>Все комментарии и подтверждения</h3>
+          </div>
+          <div id="all-comments-list" class="all-comments-list"></div>
+        </div>
+      </div>
+      <!-- ADMIN EDITOR VIEW -->
+      <div id="view-admin-editor" class="view">
+        <!-- Вкладки администратора -->
+        <div class="admin-tabs">
+          <button class="admin-tab-btn active" data-tab="editor"      onclick="setAdminTab('editor')">✎ Редактор НПА</button>
+          <button class="admin-tab-btn"         data-tab="proposals"  onclick="setAdminTab('proposals')">✉ Предложения <span id="proposals-badge" class="admin-tab-badge"></span></button>
+          <button class="admin-tab-btn"         data-tab="analytics"  onclick="setAdminTab('analytics')">◈ Аналитика</button>
+          <button class="admin-tab-btn"         data-tab="risk-matrix" onclick="setAdminTab('risk-matrix')">⊞ Матрица рисков</button>
+        </div>
+
+        <!-- Редактор -->
+        <div class="admin-tab-panel" data-panel="editor">
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-header">
+              <h3>Редактор НПА</h3>
+              <span class="card-hint">только для администратора</span>
+            </div>
+            <p style="font-size:13px;color:var(--text-2);margin-bottom:16px">
+              Редактируйте любой НПА. Удаление доступно только для записей, добавленных через форму.
+            </p>
+            <div id="editor-list"></div>
+          </div>
+        </div>
+
+        <!-- Предложения -->
+        <div class="admin-tab-panel" data-panel="proposals" style="display:none">
+          <div class="card">
+            <div class="card-header">
+              <h3>Входящие предложения от сотрудников</h3>
+              <span class="card-hint">только для администратора</span>
+            </div>
+            <div id="proposals-list"></div>
+          </div>
+        </div>
+
+        <!-- Аналитика -->
+        <div class="admin-tab-panel" data-panel="analytics" style="display:none">
+          <div id="analytics-content"></div>
+        </div>
+
+        <!-- Матрица рисков -->
+        <div class="admin-tab-panel" data-panel="risk-matrix" style="display:none">
+          <div class="card">
+            <div class="card-header">
+              <h3>Матрица рисков</h3>
+              <span class="card-hint">критичность × срочность вступления в силу</span>
+            </div>
+            <div id="risk-matrix-content"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- EDIT MODAL -->
+  <div class="modal-overlay" id="edit-modal-overlay" onclick="closeEditModal()">
+    <div class="modal" id="edit-modal" onclick="event.stopPropagation()">
+      <button class="modal-close" onclick="closeEditModal()">×</button>
+      <div id="edit-modal-content"></div>
+    </div>
+  </div>
+
+  <!-- CHANGE DETAIL MODAL -->
+  <div class="modal-overlay" id="modal-overlay" onclick="closeModal()">
+    <div class="modal" id="modal" onclick="event.stopPropagation()">
+      <button class="modal-close" onclick="closeModal()">×</button>
+      <div id="modal-content"></div>
+    </div>
+  </div>
+
+  <!-- ADMIN PANEL MODAL -->
+  <div class="modal-overlay" id="admin-overlay" onclick="closeAdmin()">
+    <div class="modal modal-admin" id="admin-modal" onclick="event.stopPropagation()">
+      <button class="modal-close" onclick="closeAdmin()">×</button>
+      <div class="admin-header">
+        <h2>Добавить изменение законодательства</h2>
+        <p>Заполните форму — запись сохранится в базе данных</p>
+      </div>
+      <form class="admin-form" onsubmit="submitNewChange(event)">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Тип</label>
+            <select name="type" required>
+              <option value="published">Опубликованный НПА</option>
+              <option value="draft">Проектный НПА</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Критичность</label>
+            <select name="criticality">
+              <option value="Высокая">Высокая</option>
+              <option value="Средняя">Средняя</option>
+              <option value="Низкая">Низкая</option>
+              <option value="Отсутствует">Отсутствует</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Категория</label>
+          <input name="category" type="text" placeholder="Трудовое право / Налоговое регулирование…" required>
+        </div>
+        <div class="form-group">
+          <label>Суть изменения</label>
+          <textarea name="summary" rows="4" placeholder="Подробное описание изменения…" required></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Нормативный акт</label>
+            <input name="norm_act" type="text" placeholder="ФЗ от … № …">
+          </div>
+          <div class="form-group">
+            <label>Дата вступления в силу</label>
+            <input name="effective_date" type="date">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Штрафные санкции</label>
+          <input name="sanctions" type="text" placeholder="Размер штрафов, иные санкции…">
+        </div>
+        <div class="form-group">
+          <label>Влияние на компанию</label>
+          <textarea name="impact" rows="3" placeholder="Как изменение влияет на деятельность…"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Митигация риска / Рекомендуемые действия</label>
+          <textarea name="mitigation" rows="3" placeholder="Что нужно сделать для соблюдения требований…"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Срок адаптации</label>
+            <input name="deadline" type="text" placeholder="До 01.09.2026">
+          </div>
+          <div class="form-group">
+            <label>Статус</label>
+            <select name="status">
+              <option value="Учесть в работе">Учесть в работе</option>
+              <option value="Для информации">Для информации</option>
+              <option value="Выполнено">Выполнено</option>
+              <option value="Мониторинг">Мониторинг</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Ответственные департаменты (через запятую)</label>
+          <input name="departments" type="text" placeholder="ДУП, ФЭД, КД">
+        </div>
+        <div class="form-group" id="draft-fields" style="display:none">
+          <label>Вероятность принятия</label>
+          <input name="probability" type="text" placeholder="60–70%">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+              <input type="checkbox" name="urgent" style="width:16px;height:16px;accent-color:#C8102E">
+              Пометить как СРОЧНО
+            </label>
+          </div>
+          <div class="form-group">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+              <input type="checkbox" name="send_notify" checked style="width:16px;height:16px;accent-color:#C8102E">
+              Разослать email-уведомления
+            </label>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" onclick="closeAdmin()">Отмена</button>
+          <button type="button" class="btn-ai" onclick="closeAdmin();openAiPanel()">🤖 Заполнить с ИИ</button>
+          <button type="submit" class="btn-primary">Добавить запись</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- EXPORT MODAL -->
+  <div class="modal-overlay" id="export-modal-overlay" onclick="closeExportModal()">
+    <div class="modal" style="max-width:420px" onclick="event.stopPropagation()">
+      <button class="modal-close" onclick="closeExportModal()">×</button>
+      <div class="modal-cat">Экспорт отчёта</div>
+      <div class="modal-title" style="margin-bottom:20px">Выберите формат</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <button class="export-fmt-btn" onclick="exportExcel()">
+          <span class="export-fmt-icon">⊞</span>
+          <div>
+            <div class="export-fmt-title">Microsoft Excel (.xlsx)</div>
+            <div class="export-fmt-sub">Три листа: Опубликованные, Проектные, Комментарии</div>
+          </div>
+        </button>
+        <button class="export-fmt-btn" onclick="exportWord()">
+          <span class="export-fmt-icon">W</span>
+          <div>
+            <div class="export-fmt-title">Microsoft Word (.doc)</div>
+            <div class="export-fmt-sub">Брендированный документ с полным описанием</div>
+          </div>
+        </button>
+        <button class="export-fmt-btn" onclick="exportPDF()">
+          <span class="export-fmt-icon">⬡</span>
+          <div>
+            <div class="export-fmt-title">PDF (печать)</div>
+            <div class="export-fmt-sub">Брендированная вёрстка Marshall — сохранить как PDF</div>
+          </div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROPOSAL MODAL -->
+  <div class="modal-overlay" id="proposal-modal-overlay" onclick="closeProposalModal()">
+    <div class="modal modal-admin" onclick="event.stopPropagation()">
+      <button class="modal-close" onclick="closeProposalModal()">×</button>
+      <div class="admin-header">
+        <h2>Предложить изменение к рассмотрению</h2>
+        <p>Заполните форму — юрист получит уведомление и рассмотрит предложение</p>
+      </div>
+      <form class="admin-form" onsubmit="submitProposal(event)">
+        <div class="form-group">
+          <label>Категория</label>
+          <input name="category" type="text" placeholder="Трудовое право / Налоговое регулирование…" required>
+        </div>
+        <div class="form-group">
+          <label>Краткое название изменения</label>
+          <input name="title" type="text" placeholder="Что именно изменилось…" required>
+        </div>
+        <div class="form-group">
+          <label>Описание</label>
+          <textarea name="summary" rows="4" placeholder="Подробнее о сути изменения…" required></textarea>
+        </div>
+        <div class="form-group">
+          <label>Нормативный акт (если известен)</label>
+          <input name="norm_act" type="text" placeholder="ФЗ от … № …">
+        </div>
+        <div class="form-group">
+          <label>Источник информации</label>
+          <input name="source" type="text" placeholder="Ссылка, публикация, уведомление…">
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" onclick="closeProposalModal()">Отмена</button>
+          <button type="submit" class="btn-primary">Отправить предложение</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- LOGIN HELP MODAL -->
+  <div class="modal-overlay" id="login-help-modal" onclick="closeLoginHelp()">
+    <div class="modal" style="max-width:520px" onclick="event.stopPropagation()">
+      <button class="modal-close" onclick="closeLoginHelp()">×</button>
+      <div class="modal-cat">Справка</div>
+      <div class="modal-title">Как работать с системой</div>
+      <div style="display:flex;flex-direction:column;gap:14px;margin-top:4px">
+        <div class="help-item">
+          <div class="help-num">1</div>
+          <div>
+            <div class="help-title">Войдите с корпоративным email</div>
+            <div class="help-text">Используйте ваш рабочий email @marshall.parts. Пароль выдаёт юридический департамент. Система сама определит ваше имя и департамент.</div>
+          </div>
+        </div>
+        <div class="help-item">
+          <div class="help-num">2</div>
+          <div>
+            <div class="help-title">Читайте изменения и отмечайте ознакомление</div>
+            <div class="help-text">В разделе «Опубликованные» находятся актуальные законы. Откройте карточку → прочитайте → нажмите «✓ Ознакомлен». Это фиксируется и видно руководству.</div>
+          </div>
+        </div>
+        <div class="help-item">
+          <div class="help-num">3</div>
+          <div>
+            <div class="help-title">Задавайте вопросы прямо в системе</div>
+            <div class="help-text">Если что-то непонятно — откройте НПА и выберите тип «⚠ Вопрос / Риск». Юрист увидит вопрос и ответит здесь же.</div>
+          </div>
+        </div>
+        <div class="help-item">
+          <div class="help-num">4</div>
+          <div>
+            <div class="help-title">Красный баннер — действуйте сразу</div>
+            <div class="help-text">Полоска вверху означает, что есть важные изменения, которые вы ещё не читали. Нажмите на неё — система покажет что именно.</div>
+          </div>
+        </div>
+        <div class="help-item">
+          <div class="help-num">5</div>
+          <div>
+            <div class="help-title">После входа пройдите обучающий тур</div>
+            <div class="help-text">Нажмите кнопку «?» в правом верхнем углу — интерактивный тур за 2 минуты покажет все возможности системы.</div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);font-size:12px;color:var(--text-3);text-align:center">
+        По вопросам доступа: обратитесь к юридическому департаменту Marshall
+      </div>
+    </div>
+  </div>
+
+  <!-- TOUR OVERLAY -->
+  <div id="tour-overlay" style="display:none;position:fixed;inset:0;background:rgba(6,14,28,0.65);z-index:300;pointer-events:none"></div>
+  <div id="tour-popup" class="tour-popup" style="display:none;z-index:400"></div>
+
+
+  <!-- AI PANEL -->
+  <div class="modal-overlay" id="ai-panel-overlay" onclick="closeAiPanel()">
+    <div class="modal modal-ai" onclick="event.stopPropagation()">
+      <button class="modal-close" onclick="closeAiPanel()">×</button>
+      <div class="modal-cat">🤖 Gemini AI</div>
+      <div class="modal-title">Автозаполнение карточек НПА</div>
+      <p style="font-size:13px;color:var(--text-2);margin-bottom:16px">
+        Вставьте текст обзора законодательства или загрузите PDF — ИИ извлечёт все изменения и заполнит карточки автоматически.
+      </p>
+
+      <div class="ai-input-tabs">
+        <button class="ai-tab active" onclick="switchAiTab('text',this)">Вставить текст</button>
+        <button class="ai-tab" onclick="switchAiTab('file',this)">Загрузить файл</button>
+      </div>
+
+      <div id="ai-tab-text">
+        <textarea id="ai-input-text" class="comment-textarea"
+          style="width:100%;min-height:160px;margin-bottom:12px"
+          placeholder="Вставьте сюда текст обзора изменений законодательства, письмо от консультантов, выписку из КонсультантПлюс или любой другой текст с описанием НПА…"></textarea>
+      </div>
+
+      <div id="ai-tab-file" style="display:none">
+        <div class="ai-file-drop">
+          <div style="font-size:28px;margin-bottom:8px">📄</div>
+          <div style="font-size:13px;color:var(--text-2);margin-bottom:12px">PDF, TXT или DOC файл</div>
+          <input type="file" id="ai-file-input" accept=".pdf,.txt,.doc,.docx"
+            onchange="loadAiFile(this)" style="display:none">
+          <button class="btn-secondary" onclick="document.getElementById('ai-file-input').click()">
+            Выбрать файл
+          </button>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+        <button class="btn-ai-analyze" id="ai-analyze-btn" onclick="runAiAnalysis()">
+          🤖 Анализировать
+        </button>
+        <span id="ai-status" style="font-size:12px;color:var(--text-2)"></span>
+      </div>
+
+      <div id="ai-results"></div>
+
+      <div id="ai-btn-publish" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-2);margin-bottom:12px;cursor:pointer">
+          <input type="checkbox" id="ai-notify-check" checked style="accent-color:#C8102E">
+          Разослать email-уведомления после публикации
+        </label>
+        <button class="btn-primary" onclick="publishAiResults()">
+          ✓ Опубликовать выбранные
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script>
+    function switchAiTab(tab, btn) {
+      document.querySelectorAll('.ai-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('ai-tab-text').style.display = tab === 'text' ? 'block' : 'none';
+      document.getElementById('ai-tab-file').style.display = tab === 'file' ? 'block' : 'none';
+    }
+  </script>
+  <script>
+    document.addEventListener('click', function(e) {
+      const wrapper = document.getElementById('bell-wrapper');
+      if (wrapper && !wrapper.contains(e.target)) closeBellPanel();
+    });
+  </script>
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

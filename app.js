@@ -2039,7 +2039,7 @@ function closeLoginHelp() {
 // ============================================================
 // GEMINI AI — автозаполнение карточек НПА
 // ============================================================
-const GEMINI_API_KEY = 'AIzaSyDWUWok60YMbmUjG0-_RlvgGg7JAjJTj44';
+const GEMINI_API_KEY = 'AIzaSyAN6c7-RpRbqRyBC2Ewv7vk9KXcppuAp-0';
 const GEMINI_URL     = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=' + GEMINI_API_KEY;
 
 async function analyzeWithGemini(text) {

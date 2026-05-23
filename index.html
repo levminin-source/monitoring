@@ -326,6 +326,28 @@
           <!-- Tour button -->
           <button class="tour-btn" id="tour-btn" onclick="startTour()" title="Обучающий тур">?</button>
 
+          <!-- Bell notifications -->
+          <div class="bell-wrapper" id="bell-wrapper">
+            <button class="bell-btn" onclick="toggleBellPanel()" title="Напоминания">
+              🔔
+              <span class="bell-badge" id="bell-badge" style="display:none">0</span>
+            </button>
+            <div class="bell-panel" id="bell-panel">
+              <div class="bell-panel-header">
+                <span>Напоминания о дедлайнах</span>
+                <button class="bell-clear" onclick="clearBellNotifications()">Очистить</button>
+              </div>
+              <div class="bell-list" id="bell-list"></div>
+              <div class="bell-panel-footer">
+                <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-2);cursor:pointer">
+                  <input type="checkbox" id="notif-permission-btn"
+                    onchange="this.checked && requestNotificationPermission(()=>{})">
+                  Разрешить браузерные уведомления
+                </label>
+              </div>
+            </div>
+          </div>
+
           <!-- Theme toggle -->
           <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Переключить тему">
             <span class="theme-toggle-icon" id="theme-icon">☀</span>
@@ -592,6 +614,7 @@
         </div>
         <div class="form-actions">
           <button type="button" class="btn-secondary" onclick="closeAdmin()">Отмена</button>
+          <button type="button" class="btn-ai" onclick="closeAdmin();openAiPanel()">🤖 Заполнить с ИИ</button>
           <button type="submit" class="btn-primary">Добавить запись</button>
         </div>
       </form>
@@ -721,11 +744,80 @@
   <div id="tour-overlay" style="display:none;position:fixed;inset:0;background:rgba(6,14,28,0.65);z-index:300;pointer-events:none"></div>
   <div id="tour-popup" class="tour-popup" style="display:none;z-index:400"></div>
 
+
+  <!-- AI PANEL -->
+  <div class="modal-overlay" id="ai-panel-overlay" onclick="closeAiPanel()">
+    <div class="modal modal-ai" onclick="event.stopPropagation()">
+      <button class="modal-close" onclick="closeAiPanel()">×</button>
+      <div class="modal-cat">🤖 Gemini AI</div>
+      <div class="modal-title">Автозаполнение карточек НПА</div>
+      <p style="font-size:13px;color:var(--text-2);margin-bottom:16px">
+        Вставьте текст обзора законодательства или загрузите PDF — ИИ извлечёт все изменения и заполнит карточки автоматически.
+      </p>
+
+      <div class="ai-input-tabs">
+        <button class="ai-tab active" onclick="switchAiTab('text',this)">Вставить текст</button>
+        <button class="ai-tab" onclick="switchAiTab('file',this)">Загрузить файл</button>
+      </div>
+
+      <div id="ai-tab-text">
+        <textarea id="ai-input-text" class="comment-textarea"
+          style="width:100%;min-height:160px;margin-bottom:12px"
+          placeholder="Вставьте сюда текст обзора изменений законодательства, письмо от консультантов, выписку из КонсультантПлюс или любой другой текст с описанием НПА…"></textarea>
+      </div>
+
+      <div id="ai-tab-file" style="display:none">
+        <div class="ai-file-drop">
+          <div style="font-size:28px;margin-bottom:8px">📄</div>
+          <div style="font-size:13px;color:var(--text-2);margin-bottom:12px">PDF, TXT или DOC файл</div>
+          <input type="file" id="ai-file-input" accept=".pdf,.txt,.doc,.docx"
+            onchange="loadAiFile(this)" style="display:none">
+          <button class="btn-secondary" onclick="document.getElementById('ai-file-input').click()">
+            Выбрать файл
+          </button>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+        <button class="btn-ai-analyze" id="ai-analyze-btn" onclick="runAiAnalysis()">
+          🤖 Анализировать
+        </button>
+        <span id="ai-status" style="font-size:12px;color:var(--text-2)"></span>
+      </div>
+
+      <div id="ai-results"></div>
+
+      <div id="ai-btn-publish" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-2);margin-bottom:12px;cursor:pointer">
+          <input type="checkbox" id="ai-notify-check" checked style="accent-color:#C8102E">
+          Разослать email-уведомления после публикации
+        </label>
+        <button class="btn-primary" onclick="publishAiResults()">
+          ✓ Опубликовать выбранные
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast" class="toast"></div>
 
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script>
+    function switchAiTab(tab, btn) {
+      document.querySelectorAll('.ai-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('ai-tab-text').style.display = tab === 'text' ? 'block' : 'none';
+      document.getElementById('ai-tab-file').style.display = tab === 'file' ? 'block' : 'none';
+    }
+  </script>
+  <script>
+    document.addEventListener('click', function(e) {
+      const wrapper = document.getElementById('bell-wrapper');
+      if (wrapper && !wrapper.contains(e.target)) closeBellPanel();
+    });
+  </script>
   <script src="data.js"></script>
   <script src="app.js"></script>
 </body>

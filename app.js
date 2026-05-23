@@ -15,9 +15,9 @@ const FIREBASE_CONFIG = {
 // ============================================================
 // EMAILJS CONFIG — вставьте ключи из emailjs.com
 // ============================================================
-const EMAILJS_SERVICE_ID  = 'service_u7mo4k9';   // ← из EmailJS Dashboard
-const EMAILJS_TEMPLATE_ID = 'template_zmp7g7t';  // ← ID шаблона письма
-const EMAILJS_PUBLIC_KEY  = 'TEl016U64K4jHvw9z';   // ← Public Key аккаунта
+const EMAILJS_SERVICE_ID  = 'YOUR_SERVICE_ID';   // ← из EmailJS Dashboard
+const EMAILJS_TEMPLATE_ID = 'YOUR_TEMPLATE_ID';  // ← ID шаблона письма
+const EMAILJS_PUBLIC_KEY  = 'YOUR_PUBLIC_KEY';   // ← Public Key аккаунта
 
 // ============================================================
 // STATE
@@ -2042,6 +2042,341 @@ function closeLoginHelp() {
   document.getElementById('login-help-modal').classList.remove('open');
 }
 
+
+// ============================================================
+// GEMINI AI — автозаполнение карточек НПА
+// ============================================================
+const GEMINI_API_KEY = 'AIzaSyAN6c7-RpRbqRyBC2Ewv7vk9KXcppuAp-0';
+const GEMINI_URL     = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + GEMINI_API_KEY;
+
+async function analyzeWithGemini(text) {
+  const prompt = `Ты — юридический ассистент компании Marshall (дистрибуция автозапчастей, работа в России).
+
+Проанализируй следующий текст и извлеки ВСЕ изменения законодательства / нормативно-правовые акты / законопроекты.
+Для каждого НПА верни JSON-объект со следующими полями:
+
+{
+  "type": "published" или "draft" (published — уже принят/вступил в силу, draft — законопроект),
+  "category": "краткая категория (напр. Трудовое право / Приём на работу)",
+  "title": "краткое название изменения (до 100 символов)",
+  "summary": "подробное описание сути изменения (2-4 предложения)",
+  "normAct": "название и реквизиты нормативного акта",
+  "effectiveDate": "дата вступления в силу в формате YYYY-MM-DD или пустая строка",
+  "sanctions": "штрафные санкции если есть, иначе пустая строка",
+  "criticality": "Высокая / Средняя / Низкая / Отсутствует",
+  "impact": "как это влияет на деятельность компании по дистрибуции автозапчастей",
+  "mitigation": "что нужно сделать компании для соблюдения требований",
+  "deadline": "срок адаптации или пустая строка",
+  "departments": ["список департаментов из: ФЭД, ДМ, ОД, КД, ДЦТ, ДУП"],
+  "status": "Учесть в работе / Для информации / Мониторинг",
+  "probability": "вероятность принятия для законопроектов или пустая строка",
+  "plannedDate": "плановая дата принятия для законопроектов или пустая строка",
+  "regulationUrl": "ссылка на regulation.gov.ru если упоминается, иначе пустая строка"
+}
+
+Верни ТОЛЬКО валидный JSON-массив объектов, без пояснений, без markdown-разметки, без тройных кавычек.
+Если НПА один — верни массив из одного элемента.
+
+Текст для анализа:
+${text}`;
+
+  const res = await fetch(GEMINI_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.1, maxOutputTokens: 8192 }
+    })
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error?.message || 'Ошибка Gemini API');
+  }
+
+  const data = await res.json();
+  const raw  = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  const clean = raw.replace(/```json|```/g, '').trim();
+  return JSON.parse(clean);
+}
+
+// ── Открыть AI-панель ──
+function openAiPanel() {
+  document.getElementById('ai-panel-overlay').classList.add('open');
+  document.getElementById('ai-input-text').value = '';
+  document.getElementById('ai-results').innerHTML = '';
+  document.getElementById('ai-btn-publish').style.display = 'none';
+  document.getElementById('ai-status').textContent = '';
+}
+
+function closeAiPanel() {
+  document.getElementById('ai-panel-overlay').classList.remove('open');
+}
+
+// ── Анализ текста ──
+async function runAiAnalysis() {
+  const text = document.getElementById('ai-input-text').value.trim();
+  if (!text) { showToast('Вставьте текст для анализа', 'error'); return; }
+
+  const btn    = document.getElementById('ai-analyze-btn');
+  const status = document.getElementById('ai-status');
+  btn.disabled = true;
+  btn.textContent = '🤖 Анализирую…';
+  status.textContent = 'Gemini обрабатывает текст…';
+  document.getElementById('ai-results').innerHTML = '';
+  document.getElementById('ai-btn-publish').style.display = 'none';
+
+  try {
+    const items = await analyzeWithGemini(text);
+    if (!items || !items.length) throw new Error('ИИ не нашёл НПА в тексте');
+
+    status.textContent = `Найдено изменений: ${items.length}. Проверьте и выберите для публикации.`;
+    renderAiResults(items);
+    document.getElementById('ai-btn-publish').style.display = 'block';
+  } catch(e) {
+    status.textContent = 'Ошибка: ' + e.message;
+    showToast('Ошибка анализа: ' + e.message, 'error');
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = '🤖 Анализировать';
+  }
+}
+
+// ── Рендер результатов ──
+let aiParsedItems = [];
+
+function renderAiResults(items) {
+  aiParsedItems = items;
+  const container = document.getElementById('ai-results');
+
+  container.innerHTML = items.map((c, i) => {
+    const cc = critClass(c.criticality || '');
+    return `<div class="ai-result-card" id="ai-card-${i}">
+      <div class="ai-card-header">
+        <label class="ai-card-check">
+          <input type="checkbox" id="ai-check-${i}" checked>
+          <span class="ai-card-num">#${i+1}</span>
+        </label>
+        <div class="ai-card-info">
+          <div class="ai-card-cat">${c.category || '—'}</div>
+          <div class="ai-card-title">${c.title || '—'}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          <span class="badge badge-${cc}">${c.criticality||'—'}</span>
+          <span class="badge badge-status">${c.type==='draft'?'Проект':'Опубликован'}</span>
+          <button class="cmt-action-btn" onclick="toggleAiEdit(${i})">✎ Правка</button>
+        </div>
+      </div>
+      <div class="ai-card-preview">
+        <div class="ai-field"><span class="ai-field-lbl">Суть:</span> ${c.summary||'—'}</div>
+        <div class="ai-field"><span class="ai-field-lbl">Нормативный акт:</span> ${c.normAct||'—'}</div>
+        <div class="ai-field"><span class="ai-field-lbl">Дата:</span> ${c.effectiveDate||c.plannedDate||'—'}</div>
+        <div class="ai-field"><span class="ai-field-lbl">Департаменты:</span> ${(c.departments||[]).join(', ')||'—'}</div>
+        ${c.impact ? `<div class="ai-field"><span class="ai-field-lbl">Влияние:</span> ${c.impact}</div>` : ''}
+        ${c.regulationUrl ? `<div class="ai-field"><span class="ai-field-lbl">Ссылка:</span> <a href="${c.regulationUrl}" target="_blank" style="color:var(--accent)">${c.regulationUrl}</a></div>` : ''}
+      </div>
+      <div class="ai-card-edit" id="ai-edit-${i}" style="display:none">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Тип</label>
+            <select onchange="aiParsedItems[${i}].type=this.value">
+              <option value="published" ${c.type==='published'?'selected':''}>Опубликованный</option>
+              <option value="draft" ${c.type==='draft'?'selected':''}>Проектный</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Критичность</label>
+            <select onchange="aiParsedItems[${i}].criticality=this.value">
+              ${['Высокая','Средняя','Низкая','Отсутствует'].map(v=>
+                `<option ${c.criticality===v?'selected':''}>${v}</option>`
+              ).join('')}
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Категория</label>
+          <input value="${(c.category||'').replace(/"/g,'&quot;')}" oninput="aiParsedItems[${i}].category=this.value">
+        </div>
+        <div class="form-group">
+          <label>Название</label>
+          <input value="${(c.title||'').replace(/"/g,'&quot;')}" oninput="aiParsedItems[${i}].title=this.value">
+        </div>
+        <div class="form-group">
+          <label>Суть изменения</label>
+          <textarea rows="3" oninput="aiParsedItems[${i}].summary=this.value">${c.summary||''}</textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Нормативный акт</label>
+            <input value="${(c.normAct||'').replace(/"/g,'&quot;')}" oninput="aiParsedItems[${i}].normAct=this.value">
+          </div>
+          <div class="form-group">
+            <label>Дата вступления</label>
+            <input type="date" value="${c.effectiveDate||''}" oninput="aiParsedItems[${i}].effectiveDate=this.value">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Влияние на компанию</label>
+          <textarea rows="2" oninput="aiParsedItems[${i}].impact=this.value">${c.impact||''}</textarea>
+        </div>
+        <div class="form-group">
+          <label>Митигация риска</label>
+          <textarea rows="2" oninput="aiParsedItems[${i}].mitigation=this.value">${c.mitigation||''}</textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Штрафные санкции</label>
+            <input value="${(c.sanctions||'').replace(/"/g,'&quot;')}" oninput="aiParsedItems[${i}].sanctions=this.value">
+          </div>
+          <div class="form-group">
+            <label>Срок адаптации</label>
+            <input value="${(c.deadline||'').replace(/"/g,'&quot;')}" oninput="aiParsedItems[${i}].deadline=this.value">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Департаменты (через запятую)</label>
+          <input value="${(c.departments||[]).join(', ')}"
+            oninput="aiParsedItems[${i}].departments=this.value.split(',').map(d=>d.trim()).filter(Boolean)">
+        </div>
+        <div class="form-group">
+          <label>Ссылка на regulation.gov.ru</label>
+          <input value="${(c.regulationUrl||'').replace(/"/g,'&quot;')}" oninput="aiParsedItems[${i}].regulationUrl=this.value">
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleAiEdit(i) {
+  const el = document.getElementById('ai-edit-' + i);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+// ── Публикация выбранных ──
+async function publishAiResults() {
+  const selected = aiParsedItems.filter((_, i) => {
+    const cb = document.getElementById('ai-check-' + i);
+    return cb && cb.checked;
+  });
+
+  if (!selected.length) { showToast('Выберите хотя бы одну запись', 'error'); return; }
+
+  const btn = document.getElementById('ai-btn-publish');
+  btn.disabled    = true;
+  btn.textContent = 'Сохранение…';
+
+  const notify = document.getElementById('ai-notify-check')?.checked;
+
+  selected.forEach(c => {
+    const id  = (c.type||'published') + '-ai-' + Date.now() + '-' + Math.random().toString(36).slice(2,6);
+    const entry = {
+      id,
+      num:           getAllChanges().length + 1,
+      type:          c.type || 'published',
+      category:      c.category || '—',
+      title:         c.title || c.category,
+      summary:       c.summary || '—',
+      normAct:       c.normAct || '—',
+      effectiveDate: c.effectiveDate || '',
+      sanctions:     c.sanctions || '—',
+      criticality:   c.criticality || 'Низкая',
+      impact:        c.impact || '—',
+      mitigation:    c.mitigation || '—',
+      deadline:      c.deadline || '—',
+      departments:   c.departments || [],
+      status:        c.status || 'Учесть в работе',
+      probability:   c.probability || null,
+      plannedDate:   c.plannedDate || c.effectiveDate || null,
+      regulationUrl: c.regulationUrl || '',
+      _aiGenerated:  true
+    };
+    store.extraChanges.push(entry);
+    if (notify) sendEmailNotification(entry);
+  });
+
+  await saveToCloud();
+  closeAiPanel();
+  buildDeptFilters();
+  renderPublished();
+  renderDraft();
+  renderDashboard();
+  showToast(`✓ Опубликовано ${selected.length} записей${notify?' + уведомления':''}`, 'success');
+
+  btn.disabled    = false;
+  btn.textContent = '✓ Опубликовать выбранные';
+}
+
+// ── Загрузка PDF ──
+async function loadAiFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const status = document.getElementById('ai-status');
+  status.textContent = 'Читаю файл…';
+
+  if (file.type === 'application/pdf') {
+    // PDF → base64 → Gemini vision
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const b64  = reader.result.split(',')[1];
+      const text = `[PDF файл: ${file.name}]\n\nСодержимое файла прикреплено как base64.`;
+      document.getElementById('ai-input-text').value = text;
+      // Для PDF используем inline_data
+      await analyzeFileWithGemini(b64, file.type, file.name);
+    };
+    reader.readAsDataURL(file);
+  } else {
+    // Текстовый файл
+    const reader = new FileReader();
+    reader.onload = e => {
+      document.getElementById('ai-input-text').value = e.target.result;
+      status.textContent = 'Файл загружен. Нажмите «Анализировать».';
+    };
+    reader.readAsText(file, 'utf-8');
+  }
+}
+
+async function analyzeFileWithGemini(b64, mimeType, fileName) {
+  const btn    = document.getElementById('ai-analyze-btn');
+  const status = document.getElementById('ai-status');
+  btn.disabled    = true;
+  btn.textContent = '🤖 Анализирую PDF…';
+  status.textContent = `Gemini читает ${fileName}…`;
+
+  const prompt = `Ты — юридический ассистент компании Marshall (дистрибуция автозапчастей, Россия).
+Проанализируй прикреплённый документ и извлеки ВСЕ изменения законодательства.
+Для каждого НПА верни JSON-объект с полями: type, category, title, summary, normAct, effectiveDate, sanctions, criticality, impact, mitigation, deadline, departments (из: ФЭД,ДМ,ОД,КД,ДЦТ,ДУП), status, probability, plannedDate, regulationUrl.
+Верни ТОЛЬКО валидный JSON-массив, без markdown.`;
+
+  try {
+    const res = await fetch(GEMINI_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            { text: prompt },
+            { inline_data: { mime_type: mimeType, data: b64 } }
+          ]
+        }],
+        generationConfig: { temperature: 0.1, maxOutputTokens: 8192 }
+      })
+    });
+
+    const data  = await res.json();
+    const raw   = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const clean = raw.replace(/\`\`\`json|\`\`\`/g, '').trim();
+    const items = JSON.parse(clean);
+
+    status.textContent = `Найдено изменений: ${items.length}`;
+    renderAiResults(items);
+    document.getElementById('ai-btn-publish').style.display = 'block';
+  } catch(e) {
+    status.textContent = 'Ошибка анализа PDF: ' + e.message;
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = '🤖 Анализировать';
+  }
+}
 // ============================================================
 // REMINDERS — напоминания о дедлайнах
 // ============================================================

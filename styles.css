@@ -45,12 +45,12 @@
 
 /* ── СВЕТЛАЯ ТЕМА ── */
 [data-theme="light"] {
-  --bg:       #f0f4f8;
-  --bg-2:     #ffffff;
-  --bg-3:     #eaf0f7;
-  --bg-4:     #dce6f0;
-  --border:        rgba(0,0,0,0.09);
-  --border-hover:  rgba(0,0,0,0.18);
+  --bg:       #F2EEE8;
+  --bg-2:     #FAF7F4;
+  --bg-3:     #EDE8E2;
+  --bg-4:     #E4DDD5;
+  --border:        rgba(0,0,0,0.08);
+  --border-hover:  rgba(0,0,0,0.16);
   --text:   #0d1e34;
   --text-2: #2d4a6a;
   --text-3: #6a8aaa;

@@ -29,7 +29,7 @@ let store = { comments: {}, acknowledgements: {}, extraChanges: [] };
 let db    = null;
 let auth  = null;
 
-const CONFIGURED = FIREBASE_CONFIG.apiKey !== 'PLACEHOLDER_FIREBASE_API_KEY';
+const CONFIGURED = FIREBASE_CONFIG.apiKey !== 'PLACEHOLDER_FIREBASE_API_KEY' && FIREBASE_CONFIG.apiKey !== 'YOUR_API_KEY' && FIREBASE_CONFIG.apiKey.length > 10;
 
 // ============================================================
 // MARSHALL BRAND ASSETS (SVG)

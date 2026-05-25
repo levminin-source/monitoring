@@ -47,19 +47,26 @@ const LOGO_FULL_SVG = `<img src="${LOGO_FULL_B64}" style="height:48px;width:auto
 // Добавляйте новых сотрудников сюда
 // ============================================================
 const USERS = {
-  'lev.minin@marshall.parts':           { name: 'Лев Минин',             dept: 'Юрист',  role: 'admin' },
-  'dinara.gumbatova@marshall.parts':    { name: 'Динара Гумбатова',      dept: 'Юрист',  role: 'admin' },
-  'margarita.kaplina@marshall.parts':   { name: 'Маргарита Каплина',     dept: 'Юрист',  role: 'admin' },
+  // ── Администраторы (юристы) ──
+  'lev.minin@marshall.parts':              { name: 'Лев Минин',              dept: 'Юрист',       role: 'admin' },
+  'dinara.gumbatova@marshall.parts':       { name: 'Динара Гумбатова',       dept: 'Юрист',       role: 'admin' },
+  'margarita.kaplina@marshall.parts':      { name: 'Маргарита Каплина',      dept: 'Юрист',       role: 'admin' },
+
+  // ── Руководство (видят все НПА, без привязки к департаменту) ──
+  'zoya.li@marshall.parts':               { name: 'Зоя Ли',                 dept: 'Руководство', role: 'user' },
+  'shulga@marshall.parts':                { name: 'Роман Шульга',            dept: 'Руководство', role: 'user' },
+  'napolov@marshall.parts':               { name: 'Константин Наполов',      dept: 'Руководство', role: 'user' },
+
   // ── Сотрудники — добавляйте по образцу ──
-  // 'bogdanova@marshall.parts':      { name: 'Светлана Богданова',           dept: 'ФЭД',    role: 'user'  },
-  // 'anna.mikhaleva@marshall.parts':     { name: 'Анна Михалева',          dept: 'ДМ',     role: 'user'  },
-  // 'yurij.kolpakov@marshall.parts':     { name: 'Юрий Колпаков',          dept: 'ДЦТ',    role: 'user'  },
-  // 'dmitriy.shudrenko@marshall.parts':    { name: 'Дмитрий Шудренко',         dept: 'КД',     role: 'user'  },
-  // 'nikita.slepushkin@marshall.parts':    { name: 'Никита Слепушкин',         dept: 'КД',     role: 'user'  },
-  // 'mostovykh@marshall.parts':    { name: 'Алексей Мостовых',         dept: 'КД',     role: 'user'  },
-  // 'vlad.kharushin@marshall.parts':    { name: 'Владислав Харюшин',         dept: 'КД',     role: 'user'  },
-  // 'yuriy.khalatov@marshall.parts':   { name: 'Юрий Халатов',       dept: 'ОД',     role: 'user'  },
-  // 'anastasia.tarasova@marshall.parts':   { name: 'Анастасия Тарасова',        dept: 'ОД',    role: 'user'  },
+  'bogdanova@marshall.parts':             { name: 'Светлана Богданова',      dept: 'ФЭД',         role: 'user' },
+  'anna.mikhaleva@marshall.parts':        { name: 'Анна Михалева',           dept: 'ДМ',          role: 'user' },
+  'yurij.kolpakov@marshall.parts':        { name: 'Юрий Колпаков',           dept: 'ДЦТ',         role: 'user' },
+  'dmitriy.shudrenko@marshall.parts':     { name: 'Дмитрий Шудренко',        dept: 'КД',          role: 'user' },
+  'nikita.slepushkin@marshall.parts':     { name: 'Никита Слепушкин',        dept: 'КД',          role: 'user' },
+  'mostovykh@marshall.parts':             { name: 'Алексей Мостовых',        dept: 'КД',          role: 'user' },
+  'vlad.kharushin@marshall.parts':        { name: 'Владислав Харюшин',       dept: 'КД',          role: 'user' },
+  'yuriy.khalatov@marshall.parts':        { name: 'Юрий Халатов',            dept: 'ОД',          role: 'user' },
+  'anastasia.tarasova@marshall.parts':    { name: 'Анастасия Тарасова',      dept: 'ОД',          role: 'user' },
 };
 
 // Доступные департаменты
@@ -378,7 +385,7 @@ function toggleSidebar() {
 function buildDeptFilters() {
   // Фиксированный список департаментов + те что есть в данных
   const fromData = getAllChanges().flatMap(c => c.departments);
-  const allDepts = [...new Set([...DEPARTMENTS, ...fromData])].filter(d => d !== 'Все').sort();
+  const allDepts = [...new Set([...DEPARTMENTS, ...fromData])].filter(d => d !== 'Все' && d !== 'Руководство').sort();
   const container = document.getElementById('dept-filters');
   if (!container) return;
   container.innerHTML = `<button class="dept-btn active" data-dept="all" onclick="filterDept('all')">Все</button>`;
@@ -425,7 +432,7 @@ function filterAck(val) {
 
 function applyFilters(changes) {
   return changes.filter(c => {
-    const deptOk = activeDept === 'all' || c.departments.some(d => d === activeDept || d === 'Все');
+    const deptOk = activeDept === 'all' || c.departments.some(d => d === activeDept || d === 'Все') || currentUser === 'Руководство';
     const critOk = activeCrit === 'all' || c.criticality === activeCrit;
 
     // Фильтр по ознакомлению

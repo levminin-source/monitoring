@@ -51,12 +51,15 @@ const USERS = {
   'dinara.gumbatova@marshall.parts':    { name: 'Динара Гумбатова',      dept: 'Юрист',  role: 'admin' },
   'margarita.kaplina@marshall.parts':   { name: 'Маргарита Каплина',     dept: 'Юрист',  role: 'admin' },
   // ── Сотрудники — добавляйте по образцу ──
-  // 'ivan.ivanov@marshall.parts':      { name: 'Иван Иванов',           dept: 'ФЭД',    role: 'user'  },
-  // 'anna.petrova@marshall.parts':     { name: 'Анна Петрова',          dept: 'КД',     role: 'user'  },
-  // 'oleg.sidorov@marshall.parts':     { name: 'Олег Сидоров',          dept: 'ДУП',    role: 'user'  },
-  // 'maria.kozlova@marshall.parts':    { name: 'Мария Козлова',         dept: 'ДМ',     role: 'user'  },
-  // 'dmitry.novikov@marshall.parts':   { name: 'Дмитрий Новиков',       dept: 'ОД',     role: 'user'  },
-  // 'elena.smirnova@marshall.parts':   { name: 'Елена Смирнова',        dept: 'ДЦТ',    role: 'user'  },
+  // 'bogdanova@marshall.parts':      { name: 'Светлана Богданова',           dept: 'ФЭД',    role: 'user'  },
+  // 'anna.mikhaleva@marshall.parts':     { name: 'Анна Михалева',          dept: 'ДМ',     role: 'user'  },
+  // 'yurij.kolpakov@marshall.parts':     { name: 'Юрий Колпаков',          dept: 'ДЦТ',    role: 'user'  },
+  // 'dmitriy.shudrenko@marshall.parts':    { name: 'Дмитрий Шудренко',         dept: 'КД',     role: 'user'  },
+  // 'nikita.slepushkin@marshall.parts':    { name: 'Никита Слепушкин',         dept: 'КД',     role: 'user'  },
+  // 'mostovykh@marshall.parts':    { name: 'Алексей Мостовых',         dept: 'КД',     role: 'user'  },
+  // 'vlad.kharushin@marshall.parts':    { name: 'Владислав Харюшин',         dept: 'КД',     role: 'user'  },
+  // 'yuriy.khalatov@marshall.parts':   { name: 'Юрий Халатов',       dept: 'ОД',     role: 'user'  },
+  // 'anastasia.tarasova@marshall.parts':   { name: 'Анастасия Тарасова',        dept: 'ОД',    role: 'user'  },
 };
 
 // Доступные департаменты

@@ -560,7 +560,11 @@ function renderPublished() {
 }
 
 function renderDraft() {
-  const changes = applyFilters([...DRAFT_CHANGES, ...store.extraChanges.filter(c => c.type === 'draft')]);
+  // Скрываем проектные НПА которые уже переведены в опубликованные
+  const promotedIds = new Set(store.extraChanges.filter(x => x._promoted).map(x => x._patchFor));
+  const extraDrafts = store.extraChanges.filter(c => c.type === 'draft' && !c._promoted && !c._patchFor);
+  const baseDrafts  = DRAFT_CHANGES.filter(c => !promotedIds.has(c.id));
+  const changes = applyFilters([...baseDrafts, ...extraDrafts]);
   document.getElementById('badge-draft').textContent = changes.length;
   document.getElementById('list-draft').innerHTML = changes.length
     ? changes.map(c => changeCard(c, true)).join('')
@@ -860,7 +864,7 @@ async function submitNewChange(e) {
   const newEntry = {
     id, num: getAllChanges().length + 1, type,
     category:      fd.get('category'),
-    title:         fd.get('category').split('/')[0].trim() + ': ' + fd.get('summary').substring(0,60) + '…',
+    title:         fd.get('title') || (fd.get('category').split('/')[0].trim() + ': ' + fd.get('summary').substring(0,60) + '…'),
     summary:       fd.get('summary'),
     normAct:       fd.get('norm_act'),
     effectiveDate: fd.get('effective_date'),
@@ -1206,14 +1210,19 @@ function renderEditor() {
 }
 
 function editorCard(c) {
-  const isExtra = store.extraChanges.some(x => x.id === c.id);
+  const isExtra  = store.extraChanges.some(x => x.id === c.id);
+  const isDraft  = DRAFT_CHANGES.some(x => x.id === c.id) || c.type === 'draft';
+  const hasPatch = store.extraChanges.some(x => x._patchFor === c.id);
+
   return `<div class="editor-card" id="ecard-${c.id}">
     <div class="editor-card-header">
       <span class="change-number">#${c.num}</span>
       <span class="editor-card-title">${c.title}</span>
       <div class="editor-card-actions">
         <button class="editor-btn-edit" onclick="openEditModal('${c.id}')">✎ Редактировать</button>
+        ${isDraft ? `<button class="editor-btn-promote" onclick="promoteToPublished('${c.id}')">→ В опубликованные</button>` : ''}
         ${isExtra ? `<button class="editor-btn-delete" onclick="deleteChange('${c.id}')">✕ Удалить</button>` : ''}
+        ${!isExtra && hasPatch ? `<button class="editor-btn-delete" onclick="deletePatch('${c.id}')">✕ Сбросить правки</button>` : ''}
       </div>
     </div>
     <div class="editor-card-meta">
@@ -1355,6 +1364,155 @@ async function deleteChange(id) {
   renderDraft();
   renderDashboard();
   showToast('Запись удалена', 'success');
+}
+
+async function deletePatch(id) {
+  if (!confirm('Сбросить все правки этой записи к исходному варианту?')) return;
+  store.extraChanges = store.extraChanges.filter(x => x._patchFor !== id);
+  await saveToCloud();
+  renderEditor();
+  renderPublished();
+  renderDraft();
+  renderDashboard();
+  showToast('Правки сброшены', 'success');
+}
+
+function promoteToPublished(id) {
+  const c = getAllChanges().find(x => x.id === id);
+  if (!c) return;
+
+  // Открываем модальное окно с формой перевода
+  document.getElementById('promote-modal-overlay').classList.add('open');
+  document.getElementById('promote-modal-content').innerHTML = `
+    <div class="modal-cat">→ Перевод в опубликованные</div>
+    <div class="modal-title" style="margin-bottom:6px">${c.title}</div>
+    <p style="font-size:12px;color:var(--text-2);margin-bottom:20px">
+      Заполните поля для опубликованного НПА. Данные из проектной карточки перенесены автоматически — проверьте и дополните.
+    </p>
+    <form class="admin-form" onsubmit="confirmPromote(event,'${id}')">
+      <div class="form-group">
+        <label>Заголовок</label>
+        <input name="title" value="${(c.title||'').replace(/"/g,'&quot;')}" required>
+      </div>
+      <div class="form-group">
+        <label>Категория</label>
+        <input name="category" value="${(c.category||'').replace(/"/g,'&quot;')}" required>
+      </div>
+      <div class="form-group">
+        <label>Суть изменения</label>
+        <textarea name="summary" rows="4" required>${c.summary||''}</textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Нормативный акт</label>
+          <input name="norm_act" value="${(c.normAct||'').replace(/"/g,'&quot;')}">
+        </div>
+        <div class="form-group">
+          <label>Дата вступления в силу</label>
+          <input name="effective_date" type="date" value="${c.plannedDate||c.effectiveDate||''}">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Штрафные санкции</label>
+        <input name="sanctions" placeholder="Размер штрафов, иные санкции…" value="${(c.sanctions||'').replace(/"/g,'&quot;')}">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Критичность</label>
+          <select name="criticality">
+            ${['Высокая','Средняя','Низкая','Отсутствует'].map(v=>
+              `<option value="${v}" ${(c.criticality||'Средняя')===v?'selected':''}>${v}</option>`
+            ).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Статус</label>
+          <select name="status">
+            ${['Учесть в работе','Для информации','Выполнено','Мониторинг'].map(v=>
+              `<option value="${v}" ${(c.status||'Учесть в работе')===v?'selected':''}>${v}</option>`
+            ).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Влияние на компанию</label>
+        <textarea name="impact" rows="3">${c.practicalValue||c.impact||''}</textarea>
+      </div>
+      <div class="form-group">
+        <label>Митигация риска / Рекомендуемые действия</label>
+        <textarea name="mitigation" rows="3">${c.mitigation||''}</textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Срок адаптации</label>
+          <input name="deadline" value="${(c.deadline||'').replace(/"/g,'&quot;')}">
+        </div>
+        <div class="form-group">
+          <label>Департаменты (через запятую)</label>
+          <input name="departments" value="${(c.departments||[]).join(', ')}">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn-secondary" onclick="closePromoteModal()">Отмена</button>
+        <button type="submit" class="btn-primary" style="background:var(--low)">→ Перевести в опубликованные</button>
+      </div>
+    </form>`;
+}
+
+function closePromoteModal() {
+  document.getElementById('promote-modal-overlay').classList.remove('open');
+}
+
+async function confirmPromote(e, id) {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const c  = getAllChanges().find(x => x.id === id);
+  if (!c) return;
+
+  const isExtra = store.extraChanges.some(x => x.id === id);
+
+  const publishedEntry = {
+    id:            'promoted-' + id + '-' + Date.now(),
+    num:           c.num,
+    type:          'published',
+    _promotedFrom: id,
+    title:         fd.get('title'),
+    category:      fd.get('category'),
+    summary:       fd.get('summary'),
+    normAct:       fd.get('norm_act'),
+    effectiveDate: fd.get('effective_date'),
+    sanctions:     fd.get('sanctions'),
+    criticality:   fd.get('criticality'),
+    status:        fd.get('status'),
+    impact:        fd.get('impact'),
+    mitigation:    fd.get('mitigation'),
+    deadline:      fd.get('deadline'),
+    departments:   fd.get('departments').split(',').map(d=>d.trim()).filter(Boolean),
+  };
+
+  store.extraChanges.push(publishedEntry);
+
+  // Помечаем оригинальный проектный как переведённый
+  if (isExtra) {
+    const idx = store.extraChanges.findIndex(x => x.id === id);
+    if (idx !== -1) store.extraChanges[idx]._promoted = true;
+  } else {
+    // Базовая запись из data.js — добавляем патч с флагом
+    const existingPatch = store.extraChanges.find(x => x._patchFor === id);
+    if (existingPatch) {
+      existingPatch._promoted = true;
+    } else {
+      store.extraChanges.push({ ...c, _patchFor: id, _promoted: true });
+    }
+  }
+
+  await saveToCloud();
+  closePromoteModal();
+  renderEditor();
+  renderPublished();
+  renderDraft();
+  renderDashboard();
+  showToast('✓ НПА переведён в опубликованные', 'success');
 }
 
 function closeEditModal() {

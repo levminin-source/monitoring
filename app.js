@@ -1191,7 +1191,11 @@ function renderEditor() {
   if (!container) return;
 
   const allPub = [...PUBLISHED_CHANGES, ...store.extraChanges.filter(c => c.type === 'published')];
-  const allDft = [...DRAFT_CHANGES,     ...store.extraChanges.filter(c => c.type === 'draft')];
+  const promotedIds = new Set(store.extraChanges.filter(x => x._promoted).map(x => x._patchFor));
+  const allDft = [
+    ...DRAFT_CHANGES.filter(c => !promotedIds.has(c.id)),
+    ...store.extraChanges.filter(c => c.type === 'draft' && !c._promoted && !c._patchFor)
+  ];
 
   container.innerHTML = `
     <div class="editor-section">

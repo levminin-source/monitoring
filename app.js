@@ -468,10 +468,16 @@ function getAllChanges() {
   const patches = {};
   store.extraChanges.forEach(x => { if (x._patchFor) patches[x._patchFor] = x; });
 
-  const base = [...PUBLISHED_CHANGES, ...DRAFT_CHANGES].map(c =>
-    patches[c.id] ? { ...c, ...patches[c.id] } : c
+  // Исключаем базовые черновики, которые уже переведены в опубликованные
+  const promotedIds = new Set(
+    store.extraChanges.filter(x => x._promoted).map(x => x._patchFor || x.id)
   );
-  const extras = store.extraChanges.filter(x => !x._patchFor);
+
+  const base = [...PUBLISHED_CHANGES, ...DRAFT_CHANGES]
+    .filter(c => !promotedIds.has(c.id))
+    .map(c => patches[c.id] ? { ...c, ...patches[c.id] } : c);
+
+  const extras = store.extraChanges.filter(x => !x._patchFor && !x._promoted);
   return [...base, ...extras];
 }
 function critClass(crit) {
@@ -1191,11 +1197,7 @@ function renderEditor() {
   if (!container) return;
 
   const allPub = [...PUBLISHED_CHANGES, ...store.extraChanges.filter(c => c.type === 'published')];
-  const promotedIds = new Set(store.extraChanges.filter(x => x._promoted).map(x => x._patchFor));
-  const allDft = [
-    ...DRAFT_CHANGES.filter(c => !promotedIds.has(c.id)),
-    ...store.extraChanges.filter(c => c.type === 'draft' && !c._promoted && !c._patchFor)
-  ];
+  const allDft = [...DRAFT_CHANGES,     ...store.extraChanges.filter(c => c.type === 'draft')];
 
   container.innerHTML = `
     <div class="editor-section">

@@ -812,6 +812,14 @@
     </div>
   </div>
 
+
+  <!-- PROMOTE TO PUBLISHED MODAL -->
+  <div class="modal-overlay" id="promote-modal-overlay" onclick="closePromoteModal()">
+    <div class="modal modal-admin" onclick="event.stopPropagation()">
+      <button class="modal-close" onclick="closePromoteModal()">×</button>
+      <div id="promote-modal-content"></div>
+    </div>
+  </div>
   <div id="toast" class="toast"></div>
 
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>

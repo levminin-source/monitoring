@@ -2462,3 +2462,20 @@ body {
 }
 [data-theme="light"] .ai-prompt-preview { background: var(--bg-3); }
 [data-theme="light"] .ai-prompt-preview-text { color: var(--text-2); }
+
+/* =====================
+   PROMOTE BUTTON
+   ===================== */
+.editor-btn-promote {
+  padding: 5px 12px;
+  background: rgba(39,174,96,0.1);
+  color: var(--low);
+  border: 1px solid rgba(39,174,96,0.3);
+  border-radius: var(--radius-sm);
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.editor-btn-promote:hover { background: var(--low); color: #fff; }

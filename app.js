@@ -943,7 +943,7 @@ function _doExportExcel() {
   XLSX.utils.book_append_sheet(wb, ws1, 'I. Q1 2026 ОПУБЛИКОВАННЫЕ');
 
   // Лист 2 — Проектные
-  const dft = getAllChanges().filter(c => c.type === 'draft' || DRAFT_CHANGES.some(d=>d.id===c.id));
+  const dft = getAllChanges().filter(c => c.type === 'draft');
   const dftRows = [
     ['Категория','Суть изменения','Нормативный акт','Дата обсуждения',
      'Вероятность','Дата вступления (план.)','Практическое значение','Департамент','Комментарии']
@@ -980,7 +980,7 @@ function _doExportExcel() {
 function exportWord() {
   closeExportModal();
   const pub = getAllChanges().filter(c => !c.type || c.type === 'published');
-  const dft = getAllChanges().filter(c => c.type === 'draft' || DRAFT_CHANGES.some(d=>d.id===c.id));
+  const dft = getAllChanges().filter(c => c.type === 'draft');
   const date = new Date().toLocaleDateString('ru-RU');
 
   let html = `<html xmlns:o="urn:schemas-microsoft-com:office:office"
@@ -1069,7 +1069,7 @@ function exportPDF() {
   closeExportModal();
   const printWin = window.open('', '_blank', 'width=900,height=700');
   const pub = getAllChanges().filter(c => !c.type || c.type === 'published');
-  const dft = getAllChanges().filter(c => c.type === 'draft' || DRAFT_CHANGES.some(d=>d.id===c.id));
+  const dft = getAllChanges().filter(c => c.type === 'draft');
   const date = new Date().toLocaleDateString('ru-RU');
 
   const crit_style = {
@@ -1535,7 +1535,7 @@ function renderAnalytics() {
   if (!isAdmin()) return;
 
   const pub = getAllChanges().filter(c => !c.type || c.type === 'published');
-  const dft = getAllChanges().filter(c => c.type === 'draft' || DRAFT_CHANGES.some(d=>d.id===c.id));
+  const dft = getAllChanges().filter(c => c.type === 'draft');
   const all = getAllChanges();
 
   // ── Статистика ──

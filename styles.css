@@ -516,6 +516,7 @@ body {
 .stat-high   .stat-number { color: var(--high); }
 .stat-medium .stat-number { color: var(--medium); }
 .stat-pending .stat-number { color: var(--accent-2); }
+[data-theme="light"] .stat-total .stat-number { color: var(--accent); }
 .stat-label { color: var(--text-2); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
 
 .dashboard-row {

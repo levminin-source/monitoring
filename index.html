@@ -307,7 +307,7 @@
         <button class="btn-admin" id="btn-add-change" onclick="openAdminPanel()" style="display:none">⊕ Добавить изменение</button>
         <button class="btn-export" onclick="openExportModal()">↓ Экспорт отчёта</button>
         <button class="btn-propose" id="btn-propose" onclick="openProposalModal()">✉ Предложить изменение</button>
-        <div class="quarter-badge">Q1 · 2026</div>
+        <div class="quarter-badge" id="quarter-badge"></div>
       </div>
     </aside>
 
@@ -413,7 +413,7 @@
 
         <div class="card">
           <div class="card-header">
-            <h3>Compliance-дайджест Q1 2026</h3>
+            <h3 id="digest-title">Compliance-дайджест</h3>
             <span class="card-hint">сформирован автоматически</span>
           </div>
           <div class="digest-grid" id="digest-grid"></div>

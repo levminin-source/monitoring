@@ -1,7 +1,14 @@
-// data.js — Данные мониторинга законодательства Q1 2026
+// data.js — Данные мониторинга законодательства (обновляется динамически)
 // Редактируйте этот файл для обновления контента юристами
 
-const QUARTER = "Q1 2026";
+// Динамический период — текущий месяц и год
+function getCurrentPeriod() {
+  const now = new Date();
+  const month = now.toLocaleString('ru-RU', { month: 'long' });
+  const capitalized = month.charAt(0).toUpperCase() + month.slice(1);
+  return `${capitalized} ${now.getFullYear()}`;
+}
+const QUARTER = getCurrentPeriod();
 
 const PUBLISHED_CHANGES = [
   {

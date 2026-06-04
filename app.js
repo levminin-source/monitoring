@@ -263,6 +263,12 @@ function showApp() {
   if (adminBtn)   adminBtn.style.display   = isAdmin() ? 'block' : 'none';
   if (proposeBtn) proposeBtn.style.display = isAdmin() ? 'none'  : 'block';
 
+  // Обновляем динамические метки периода
+  const qBadge = document.getElementById('quarter-badge');
+  if (qBadge) qBadge.textContent = QUARTER;
+  const digestTitle = document.getElementById('digest-title');
+  if (digestTitle) digestTitle.textContent = `Compliance-дайджест · ${QUARTER}`;
+
   // Показываем баннер обязательного ознакомления
   setTimeout(showAckBanner, 800);
   // Инициализируем кнопку тура
@@ -940,7 +946,7 @@ function _doExportExcel() {
   ]));
   const ws1 = XLSX.utils.aoa_to_sheet(pubRows);
   ws1['!cols'] = [4,22,55,35,14,28,12,38,35,16,14,16].map(w=>({wch:w}));
-  XLSX.utils.book_append_sheet(wb, ws1, 'I. Q1 2026 ОПУБЛИКОВАННЫЕ');
+  XLSX.utils.book_append_sheet(wb, ws1, `Опубликованные · ${QUARTER}`);
 
   // Лист 2 — Проектные
   const dft = getAllChanges().filter(c => c.type === 'draft');

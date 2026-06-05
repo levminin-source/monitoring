@@ -207,6 +207,14 @@ function showLoginError(msg) {
   const el = document.getElementById('login-error');
   el.textContent = msg;
   el.classList.add('visible');
+  // shake на поле пароля
+  const pwField = document.getElementById('login-password');
+  if (pwField) {
+    pwField.classList.remove('login-shake');
+    void pwField.offsetWidth;
+    pwField.classList.add('login-shake');
+    pwField.addEventListener('animationend', () => pwField.classList.remove('login-shake'), { once: true });
+  }
 }
 
 async function logout() {
@@ -512,17 +520,29 @@ function deptAckPct(dept) {
 // ============================================================
 // DASHBOARD
 // ============================================================
+function animateStatNumber(el, value) {
+  if (!el) return;
+  const prev = el.textContent;
+  el.textContent = value;
+  if (String(prev) !== String(value)) {
+    el.classList.remove('pop-in');
+    void el.offsetWidth; // reflow для перезапуска анимации
+    el.classList.add('pop-in');
+    el.addEventListener('animationend', () => el.classList.remove('pop-in'), { once: true });
+  }
+}
+
 function renderDashboard() {
-  document.getElementById('stat-total').textContent  = getAllChanges().length;
-  document.getElementById('stat-high').textContent   = PUBLISHED_CHANGES.filter(c => c.criticality === 'Высокая').length;
-  document.getElementById('stat-medium').textContent = PUBLISHED_CHANGES.filter(c => c.criticality === 'Средняя').length;
+  animateStatNumber(document.getElementById('stat-total'),  getAllChanges().length);
+  animateStatNumber(document.getElementById('stat-high'),   PUBLISHED_CHANGES.filter(c => c.criticality === 'Высокая').length);
+  animateStatNumber(document.getElementById('stat-medium'), PUBLISHED_CHANGES.filter(c => c.criticality === 'Средняя').length);
 
   const depts = ['ДУП','ФЭД','КД','ДЛ'];
   let pending = 0;
   PUBLISHED_CHANGES.forEach(c => {
     c.departments.forEach(d => { if (d !== 'Все' && !getAck(c.id)[d]) pending++; });
   });
-  document.getElementById('stat-pending').textContent   = pending;
+  animateStatNumber(document.getElementById('stat-pending'), pending);
   document.getElementById('badge-comments').textContent = Object.values(store.comments).flat().length;
 
   const urgent = PUBLISHED_CHANGES
@@ -686,7 +706,12 @@ function openChange(id) {
 }
 
 function closeModal() {
-  document.getElementById('modal-overlay').classList.remove('open');
+  const overlay = document.getElementById('modal-overlay');
+  overlay.classList.add('closing');
+  overlay.classList.remove('open');
+  overlay.addEventListener('animationend', () => {
+    overlay.classList.remove('closing');
+  }, { once: true });
 }
 
 // ============================================================
@@ -2536,8 +2561,19 @@ function updateBellBadge() {
   const unread = bellNotifications.filter(n => !n.read).length;
   const badge = document.getElementById('bell-badge');
   if (badge) {
+    const wasHidden = badge.style.display === 'none' || badge.style.display === '';
     badge.textContent = unread || '';
-    badge.style.display = unread ? 'flex' : 'none';
+    if (unread) {
+      badge.style.display = 'flex';
+      if (wasHidden) {
+        badge.classList.remove('badge-appeared');
+        void badge.offsetWidth;
+        badge.classList.add('badge-appeared');
+        badge.addEventListener('animationend', () => badge.classList.remove('badge-appeared'), { once: true });
+      }
+    } else {
+      badge.style.display = 'none';
+    }
   }
 }
 

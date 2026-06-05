@@ -281,6 +281,9 @@
           <span class="nav-icon">◷</span> Комментарии
           <span class="nav-badge pending" id="badge-comments">0</span>
         </button>
+        <button class="nav-item" data-view="calendar" onclick="setView('calendar')">
+          <span class="nav-icon">⊟</span> Календарь
+        </button>
         <button class="nav-item" id="nav-admin" data-view="admin-editor" onclick="setView('admin-editor')" style="display:none">
           <span class="nav-icon">⚙</span> Редактор НПА
           <span class="admin-badge-pill">ADMIN</span>
@@ -448,6 +451,11 @@
           <div id="all-comments-list" class="all-comments-list"></div>
         </div>
       </div>
+      <!-- CALENDAR VIEW -->
+      <div id="view-calendar" class="view">
+        <div id="calendar-container"></div>
+      </div>
+
       <!-- ADMIN EDITOR VIEW -->
       <div id="view-admin-editor" class="view">
         <!-- Вкладки администратора -->

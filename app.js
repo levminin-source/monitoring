@@ -67,6 +67,7 @@ const USERS = {
   'vlad.kharushin@marshall.parts':        { name: 'Владислав Харюшин',       dept: 'КД',          role: 'user' },
   'yuriy.khalatov@marshall.parts':        { name: 'Юрий Халатов',            dept: 'ОД',          role: 'user' },
   'anastasia.tarasova@marshall.parts':    { name: 'Анастасия Тарасова',      dept: 'ОД',          role: 'user' },
+  'ekaterina.ishenko@marshall.parts':     { name: 'Екатерина Ищенко',         dept: 'ДУП',         role: 'user' },
 };
 
 // Доступные департаменты
@@ -379,11 +380,13 @@ function setView(view) {
     published:    'Опубликованные НПА',
     draft:        'Проектные НПА',
     comments:     'Комментарии',
+    calendar:     'Compliance-календарь',
     'admin-editor': '⚙ Редактор НПА'
   };
   document.getElementById('page-title').textContent = titles[view] || '';
   if (view === 'comments')      renderAllComments();
   if (view === 'admin-editor')  setAdminTab('editor');
+  if (view === 'calendar')      renderCalendar();
 }
 
 function toggleSidebar() {
@@ -2455,6 +2458,129 @@ async function publishAiResults() {
 
 
 
+
+
+// ============================================================
+// COMPLIANCE CALENDAR
+// ============================================================
+
+function renderCalendar() {
+  const container = document.getElementById('calendar-container');
+  if (!container) return;
+
+  const year = new Date().getFullYear();
+  const months = ['Январь','Февраль','Март','Апрель','Май','Июнь',
+                  'Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+  const nowMonth = new Date().getMonth();
+  const nowYear  = new Date().getFullYear();
+
+  // Собираем все НПА с датами
+  const all = getAllChanges();
+  const events = []; // { date, title, id, type, criticality }
+
+  all.forEach(c => {
+    const isDraft = c.type === 'draft';
+
+    // Фильтр по департаменту для обычных сотрудников
+    const deptOk = isAdmin()
+      || currentUser === 'Руководство'
+      || (c.departments || []).some(d => d === currentUser || d === 'Все');
+    if (!deptOk) return;
+
+    // Опубликованные — дата вступления в силу
+    if (!isDraft && c.effectiveDate && c.effectiveDate !== '—') {
+      const d = new Date(c.effectiveDate);
+      if (!isNaN(d)) events.push({ date: d, title: c.title, id: c.id, kind: 'published', criticality: c.criticality });
+    }
+
+    // Проектные — плановая дата
+    if (isDraft && c.plannedDate && c.plannedDate !== '—') {
+      const d = new Date(c.plannedDate);
+      if (!isNaN(d)) events.push({ date: d, title: c.title, id: c.id, kind: 'draft', criticality: c.criticality });
+    }
+
+    // Дедлайн адаптации (у опубликованных)
+    if (!isDraft && c.deadline && c.deadline !== '—') {
+      const d = new Date(c.deadline);
+      if (!isNaN(d)) events.push({ date: d, title: c.title, id: c.id, kind: 'deadline', criticality: c.criticality });
+    }
+  });
+
+  // Группируем по году-месяцу
+  function eventsForMonth(y, m) {
+    return events.filter(e => e.date.getFullYear() === y && e.date.getMonth() === m)
+                 .sort((a, b) => a.date - b.date);
+  }
+
+  function kindLabel(kind) {
+    return { published:'Опубликованный', draft:'Проектный', deadline:'Дедлайн адаптации' }[kind] || kind;
+  }
+  function kindClass(kind) {
+    return { published:'cal-kind-pub', draft:'cal-kind-draft', deadline:'cal-kind-ddl' }[kind] || '';
+  }
+  function critClass2(crit) {
+    return { 'Высокая':'cal-crit-high','Средняя':'cal-crit-med','Низкая':'cal-crit-low' }[crit] || 'cal-crit-low';
+  }
+  function dotClass(ev) {
+    if (ev.kind === 'draft')    return 'cal-dot-draft';
+    if (ev.kind === 'deadline') return 'cal-dot-ddl';
+    return { 'Высокая':'cal-dot-high','Средняя':'cal-dot-med','Низкая':'cal-dot-low','Отсутствует':'cal-dot-low' }[ev.criticality] || 'cal-dot-low';
+  }
+  function fmtDay(d) {
+    return d.toLocaleDateString('ru-RU', { day:'numeric', month:'short' });
+  }
+
+  let html = `<div class="cal-header">
+    <div class="cal-title-row">
+      <span class="cal-year-label">${year}</span>
+      <div class="cal-legend">
+        <span class="cal-leg-item"><span class="cal-leg-dot cal-dot-high"></span>Высокая</span>
+        <span class="cal-leg-item"><span class="cal-leg-dot cal-dot-med"></span>Средняя</span>
+        <span class="cal-leg-item"><span class="cal-leg-dot cal-dot-low"></span>Низкая</span>
+        <span class="cal-leg-item"><span class="cal-leg-dot cal-dot-draft"></span>Проектный</span>
+        <span class="cal-leg-item"><span class="cal-leg-dot cal-dot-ddl"></span>Дедлайн адаптации</span>
+      </div>
+    </div>
+  </div>
+  <div class="cal-grid">`;
+
+  for (let m = 0; m < 12; m++) {
+    const evs = eventsForMonth(year, m);
+    const isCurrent = (m === nowMonth && year === nowYear);
+
+    html += `<div class="cal-month${isCurrent ? ' cal-month-current' : ''}">
+      <div class="cal-month-head">
+        <span class="cal-month-name">${months[m]}${isCurrent ? ' <span class="cal-now-badge">сейчас</span>' : ''}</span>
+        <span class="cal-month-count">${evs.length}</span>
+      </div>
+      <div class="cal-month-body">`;
+
+    if (evs.length === 0) {
+      html += `<div class="cal-empty">Нет событий</div>`;
+    } else {
+      evs.forEach(ev => {
+        html += `<div class="cal-item" onclick="openChange('${ev.id}')">
+          <span class="cal-item-dot ${dotClass(ev)}"></span>
+          <div class="cal-item-inner">
+            <div class="cal-item-title">${ev.title}</div>
+            <div class="cal-item-meta">
+              <span class="cal-item-date">${fmtDay(ev.date)}</span>
+              <span class="cal-item-badge ${kindClass(ev.kind)}">${kindLabel(ev.kind)}</span>
+              ${ev.criticality && ev.kind !== 'deadline' && ev.kind !== 'draft'
+                ? `<span class="cal-item-badge ${critClass2(ev.criticality)}">${ev.criticality}</span>`
+                : ''}
+            </div>
+          </div>
+        </div>`;
+      });
+    }
+
+    html += `</div></div>`;
+  }
+
+  html += `</div>`;
+  container.innerHTML = html;
+}
 
 // ============================================================
 // REMINDERS — напоминания о дедлайнах

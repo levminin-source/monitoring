@@ -726,7 +726,7 @@ function renderCommentsSection(id) {
   const comments = getComments(id);
 
   function oneComment(cm, idx) {
-    const isOwn  = cm.email === currentEmail;
+    const isOwn  = cm.email?.toLowerCase() === currentEmail?.toLowerCase();
     const isAdm  = isAdmin();
     const canEdit = isOwn && cm.type !== 'ack';
     const canDel  = isOwn || isAdm;
@@ -834,6 +834,90 @@ async function submitComment(id) {
   showToast(type === 'ack' ? '✓ Ознакомление зафиксировано' : '✓ Комментарий добавлен', 'success');
   // onSnapshot обновит модал автоматически если Firebase подключён
   if (!CONFIGURED) { openChange(id); updateBadges(); renderDashboard(); renderPublished(); renderDraft(); }
+}
+
+
+// ============================================================
+// COMMENT ACTIONS — delete, edit, reply
+// ============================================================
+
+async function deleteComment(changeId, idx) {
+  if (!store.comments[changeId]) return;
+  store.comments[changeId].splice(idx, 1);
+  if (!store.comments[changeId].length) delete store.comments[changeId];
+  await saveToCloud();
+  showToast('Комментарий удалён', 'success');
+  if (CONFIGURED) return; // onSnapshot обновит сам
+  openChange(changeId); updateBadges(); renderDashboard();
+}
+
+async function deleteReply(changeId, cmtIdx, replyIdx) {
+  const cm = (store.comments[changeId] || [])[cmtIdx];
+  if (!cm || !cm.replies) return;
+  cm.replies.splice(replyIdx, 1);
+  await saveToCloud();
+  showToast('Ответ удалён', 'success');
+  if (CONFIGURED) return;
+  openChange(changeId); updateBadges();
+}
+
+function startEditComment(changeId, idx) {
+  const cm = (store.comments[changeId] || [])[idx];
+  if (!cm) return;
+  cm._editing = true;
+  openChange(changeId);
+}
+
+async function saveEditComment(changeId, idx) {
+  const cm = (store.comments[changeId] || [])[idx];
+  if (!cm) return;
+  const textarea = document.getElementById('cedit-' + changeId + '-' + idx);
+  if (!textarea) return;
+  cm.text = textarea.value.trim();
+  cm.edited = true;
+  delete cm._editing;
+  await saveToCloud();
+  showToast('Комментарий изменён', 'success');
+  if (CONFIGURED) return;
+  openChange(changeId);
+}
+
+function cancelEditComment(changeId, idx) {
+  const cm = (store.comments[changeId] || [])[idx];
+  if (!cm) return;
+  delete cm._editing;
+  openChange(changeId);
+}
+
+function toggleReplyForm(changeId, idx) {
+  const form = document.getElementById('reply-form-' + changeId + '-' + idx);
+  if (!form) return;
+  form.style.display = form.style.display === 'none' ? 'block' : 'none';
+  if (form.style.display === 'block') {
+    const ta = document.getElementById('reply-text-' + changeId + '-' + idx);
+    if (ta) ta.focus();
+  }
+}
+
+async function submitReply(changeId, idx) {
+  const ta = document.getElementById('reply-text-' + changeId + '-' + idx);
+  if (!ta) return;
+  const text = ta.value.trim();
+  if (!text) return;
+  const cm = (store.comments[changeId] || [])[idx];
+  if (!cm) return;
+  if (!cm.replies) cm.replies = [];
+  const now = new Date();
+  cm.replies.push({
+    author: currentName || currentUser || currentEmail,
+    time: now.toLocaleDateString('ru-RU') + ' ' +
+          now.toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' }),
+    text
+  });
+  await saveToCloud();
+  showToast('Ответ добавлен', 'success');
+  if (CONFIGURED) return;
+  openChange(changeId);
 }
 
 // ============================================================
@@ -2464,6 +2548,18 @@ async function publishAiResults() {
 // COMPLIANCE CALENDAR
 // ============================================================
 
+// Парсит даты в форматах: "2026-09-01", "01.09.2026", "До 01.09.2026", "До 15.06.2027 (подача)"
+function parseFlexDate(str) {
+  if (!str || str === '—' || str === '-') return null;
+  // Ищем паттерн ДД.ММ.ГГГГ внутри любой строки
+  const m = str.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+  if (m) return new Date(`${m[3]}-${m[2]}-${m[1]}`);
+  // ISO-формат YYYY-MM-DD
+  const iso = new Date(str);
+  if (!isNaN(iso)) return iso;
+  return null;
+}
+
 function renderCalendar() {
   const container = document.getElementById('calendar-container');
   if (!container) return;
@@ -2489,20 +2585,20 @@ function renderCalendar() {
 
     // Опубликованные — дата вступления в силу
     if (!isDraft && c.effectiveDate && c.effectiveDate !== '—') {
-      const d = new Date(c.effectiveDate);
-      if (!isNaN(d)) events.push({ date: d, title: c.title, id: c.id, kind: 'published', criticality: c.criticality });
+      const d = parseFlexDate(c.effectiveDate);
+      if (d) events.push({ date: d, title: c.title, id: c.id, kind: 'published', criticality: c.criticality });
     }
 
     // Проектные — плановая дата
     if (isDraft && c.plannedDate && c.plannedDate !== '—') {
-      const d = new Date(c.plannedDate);
-      if (!isNaN(d)) events.push({ date: d, title: c.title, id: c.id, kind: 'draft', criticality: c.criticality });
+      const d = parseFlexDate(c.plannedDate);
+      if (d) events.push({ date: d, title: c.title, id: c.id, kind: 'draft', criticality: c.criticality });
     }
 
     // Дедлайн адаптации (у опубликованных)
     if (!isDraft && c.deadline && c.deadline !== '—') {
-      const d = new Date(c.deadline);
-      if (!isNaN(d)) events.push({ date: d, title: c.title, id: c.id, kind: 'deadline', criticality: c.criticality });
+      const d = parseFlexDate(c.deadline);
+      if (d) events.push({ date: d, title: c.title, id: c.id, kind: 'deadline', criticality: c.criticality });
     }
   });
 

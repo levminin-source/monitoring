@@ -841,24 +841,44 @@ async function submitComment(id) {
 // COMMENT ACTIONS — delete, edit, reply
 // ============================================================
 
-async function deleteComment(changeId, idx) {
+let _deleteUndoTimer = null;
+
+function deleteComment(changeId, idx) {
   if (!store.comments[changeId]) return;
-  store.comments[changeId].splice(idx, 1);
+  const saved = store.comments[changeId].splice(idx, 1)[0]; // извлекаем, не сохраняем
   if (!store.comments[changeId].length) delete store.comments[changeId];
-  await saveToCloud();
-  showToast('Комментарий удалён', 'success');
-  if (CONFIGURED) return; // onSnapshot обновит сам
-  openChange(changeId); updateBadges(); renderDashboard();
+
+  // Перерисовываем UI сразу
+  if (CONFIGURED) openChange(changeId);
+  else { openChange(changeId); updateBadges(); renderDashboard(); }
+
+  // Показываем toast с кнопкой отмены
+  showToastUndo('Комментарий удалён', () => {
+    // Восстанавливаем
+    if (!store.comments[changeId]) store.comments[changeId] = [];
+    store.comments[changeId].splice(idx, 0, saved);
+    openChange(changeId); updateBadges(); renderDashboard();
+  }, async () => {
+    // Подтверждаем удаление — сохраняем в облако
+    await saveToCloud();
+    updateBadges(); renderDashboard();
+  });
 }
 
-async function deleteReply(changeId, cmtIdx, replyIdx) {
+function deleteReply(changeId, cmtIdx, replyIdx) {
   const cm = (store.comments[changeId] || [])[cmtIdx];
   if (!cm || !cm.replies) return;
-  cm.replies.splice(replyIdx, 1);
-  await saveToCloud();
-  showToast('Ответ удалён', 'success');
-  if (CONFIGURED) return;
-  openChange(changeId); updateBadges();
+  const saved = cm.replies.splice(replyIdx, 1)[0];
+
+  if (CONFIGURED) openChange(changeId);
+  else { openChange(changeId); updateBadges(); }
+
+  showToastUndo('Ответ удалён', () => {
+    cm.replies.splice(replyIdx, 0, saved);
+    openChange(changeId);
+  }, async () => {
+    await saveToCloud();
+  });
 }
 
 function startEditComment(changeId, idx) {
@@ -1302,9 +1322,41 @@ function exportReport() { openExportModal(); }
 // ============================================================
 function showToast(msg, type = '') {
   const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className   = 'toast show ' + type;
+  // Отменяем pending undo если был
+  if (_deleteUndoTimer) { clearTimeout(_deleteUndoTimer); _deleteUndoTimer = null; }
+  t.innerHTML = '';
+  const span = document.createElement('span');
+  span.textContent = msg;
+  t.appendChild(span);
+  t.className = 'toast show ' + type;
   setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+function showToastUndo(msg, onUndo, onConfirm) {
+  const t = document.getElementById('toast');
+  if (_deleteUndoTimer) { clearTimeout(_deleteUndoTimer); _deleteUndoTimer = null; }
+
+  t.innerHTML = '';
+  const span = document.createElement('span');
+  span.textContent = msg;
+  const btn = document.createElement('button');
+  btn.textContent = 'Отменить';
+  btn.className = 'toast-undo-btn';
+  btn.onclick = () => {
+    clearTimeout(_deleteUndoTimer);
+    _deleteUndoTimer = null;
+    t.classList.remove('show');
+    onUndo();
+  };
+  t.appendChild(span);
+  t.appendChild(btn);
+  t.className = 'toast show';
+
+  _deleteUndoTimer = setTimeout(() => {
+    t.classList.remove('show');
+    _deleteUndoTimer = null;
+    onConfirm();
+  }, 5000);
 }
 
 
@@ -2595,10 +2647,12 @@ function renderCalendar() {
       if (d) events.push({ date: d, title: c.title, id: c.id, kind: 'draft', criticality: c.criticality });
     }
 
-    // Дедлайн адаптации (у опубликованных)
+    // Дедлайн адаптации (у опубликованных) — не добавляем если совпадает с датой вступления
     if (!isDraft && c.deadline && c.deadline !== '—') {
       const d = parseFlexDate(c.deadline);
-      if (d) events.push({ date: d, title: c.title, id: c.id, kind: 'deadline', criticality: c.criticality });
+      const effD = parseFlexDate(c.effectiveDate);
+      const isDuplicate = d && effD && d.getTime() === effD.getTime();
+      if (d && !isDuplicate) events.push({ date: d, title: c.title, id: c.id, kind: 'deadline', criticality: c.criticality });
     }
   });
 

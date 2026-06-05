@@ -2772,3 +2772,20 @@ body {
 @media (max-width: 480px) {
   .cal-grid { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* ── Toast undo button ── */
+.toast-undo-btn {
+  margin-left: 12px;
+  padding: 2px 10px;
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.35);
+  border-radius: 4px;
+  color: #fff;
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.toast-undo-btn:hover { background: rgba(255,255,255,0.28); }

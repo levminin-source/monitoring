@@ -6,15 +6,15 @@
 
 :root {
   /* ── ТЁМНАЯ ТЕМА (по умолчанию) ── */
-  --bg:       #091525;
-  --bg-2:     #0d1e34;
-  --bg-3:     #112440;
-  --bg-4:     #162d4e;
-  --border:        rgba(255,255,255,0.08);
-  --border-hover:  rgba(255,255,255,0.16);
+  --bg:       #122438;
+  --bg-2:     #172f4a;
+  --bg-3:     #1c3a5a;
+  --bg-4:     #204570;
+  --border:        rgba(255,255,255,0.13);
+  --border-hover:  rgba(255,255,255,0.22);
   --text:   #ffffff;
-  --text-2: #a8b8cc;
-  --text-3: #5a7290;
+  --text-2: #c8daf0;
+  --text-3: #7a9abа;
   --shadow: 0 4px 32px rgba(0,0,0,0.5);
 
   /* Marshall Red — неизменный в обеих темах */
@@ -2577,4 +2577,198 @@ body {
   /* Отключаем transition чтобы не конфликтовал с animation */
   transition: none;
   animation: toastSlideIn 0.25s cubic-bezier(0.34, 1.3, 0.64, 1) both;
+}
+
+/* =====================================================================
+   COMPLIANCE CALENDAR
+   ===================================================================== */
+#calendar-container { padding-bottom: 24px; }
+
+.cal-header {
+  margin-bottom: 20px;
+}
+.cal-title-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.cal-year-label {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: 0.04em;
+}
+.cal-legend {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+.cal-leg-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  color: var(--text-2);
+}
+.cal-leg-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.cal-month {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+.cal-month-current {
+  border-color: var(--accent);
+}
+.cal-month-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px 9px;
+  border-bottom: 1px solid var(--border);
+}
+.cal-month-current .cal-month-head {
+  border-bottom-color: var(--accent);
+}
+.cal-month-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.cal-month-current .cal-month-name {
+  color: var(--accent);
+}
+.cal-now-badge {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--accent-glow);
+  color: var(--accent);
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+.cal-month-count {
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--text-3);
+  background: var(--bg-3);
+  padding: 1px 7px;
+  border-radius: 10px;
+}
+.cal-month-body {
+  padding: 8px 10px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-height: 52px;
+}
+.cal-empty {
+  font-size: 12px;
+  color: var(--text-3);
+  text-align: center;
+  padding: 10px 0;
+  opacity: 0.6;
+}
+
+.cal-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-3);
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+.cal-item:hover {
+  border-color: var(--border-hover);
+  background: var(--bg-4);
+}
+.cal-item-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+.cal-item-inner {
+  flex: 1;
+  min-width: 0;
+}
+.cal-item-title {
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cal-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 3px;
+  flex-wrap: wrap;
+}
+.cal-item-date {
+  font-size: 11px;
+  color: var(--text-3);
+  font-family: var(--mono);
+}
+.cal-item-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+/* Точки и бейджи по типу */
+.cal-dot-high   { background: var(--high); }
+.cal-dot-med    { background: var(--medium); }
+.cal-dot-low    { background: var(--low); }
+.cal-dot-draft  { background: var(--accent-2); }
+.cal-dot-ddl    { background: #7c3aed; }
+
+.cal-kind-pub   { background: var(--low-bg);  color: var(--low); }
+.cal-kind-draft { background: var(--none-bg); color: var(--none); }
+.cal-kind-ddl   { background: rgba(124,58,237,0.12); color: #7c3aed; }
+
+.cal-crit-high  { background: var(--high-bg);   color: var(--high); }
+.cal-crit-med   { background: var(--medium-bg); color: var(--medium); }
+.cal-crit-low   { background: var(--low-bg);    color: var(--low); }
+
+/* Светлая тема */
+[data-theme="light"] .cal-month { background: var(--bg-2); }
+[data-theme="light"] .cal-item  { background: var(--bg-3); }
+[data-theme="light"] .cal-item:hover { background: var(--bg-4); }
+[data-theme="light"] .cal-kind-ddl { color: #5b21b6; background: rgba(124,58,237,0.08); }
+[data-theme="light"] .cal-dot-ddl  { background: #5b21b6; }
+
+/* Мобильная адаптация */
+@media (max-width: 900px) {
+  .cal-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cal-legend { display: none; }
+}
+@media (max-width: 480px) {
+  .cal-grid { grid-template-columns: minmax(0, 1fr); }
 }

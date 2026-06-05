@@ -288,7 +288,7 @@ function showApp() {
 }
 
 function showAckBanner() {
-  if (!currentUser) return;
+  if (!currentUser || isAdmin()) return;
   const unread = [...PUBLISHED_CHANGES, ...store.extraChanges.filter(c=>c.type==='published')]
     .filter(c => (c.criticality === 'Высокая' || c.criticality === 'Средняя') &&
                   !isAcknowledgedByUser(c.id, currentUser));
@@ -539,10 +539,12 @@ function renderDashboard() {
 
   const depts = ['ДУП','ФЭД','КД','ДЛ'];
   let pending = 0;
-  PUBLISHED_CHANGES.forEach(c => {
-    c.departments.forEach(d => { if (d !== 'Все' && !getAck(c.id)[d]) pending++; });
-  });
-  animateStatNumber(document.getElementById('stat-pending'), pending);
+  if (!isAdmin()) {
+    PUBLISHED_CHANGES.forEach(c => {
+      c.departments.forEach(d => { if (d !== 'Все' && !getAck(c.id)[d]) pending++; });
+    });
+  }
+  animateStatNumber(document.getElementById('stat-pending'), isAdmin() ? '—' : pending);
   document.getElementById('badge-comments').textContent = Object.values(store.comments).flat().length;
 
   const urgent = PUBLISHED_CHANGES

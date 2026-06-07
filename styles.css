@@ -566,7 +566,7 @@ body {
 }
 .urgent-item:hover { background: var(--bg-4); }
 .urgent-date { font-family: var(--mono); font-size: 11px; color: var(--text-3); min-width: 70px; }
-.urgent-text { font-size: 13px; flex: 1; }
+.urgent-text { font-size: 13px; flex: 1; white-space: normal; word-break: break-word; }
 .urgent-dept {
   font-size: 11px;
   font-weight: 700;
@@ -2931,3 +2931,22 @@ body {
   text-align: right;
 }
 .digest-more:hover { background: var(--bg-3); }
+
+/* ── Dashboard два столбца ── */
+.dashboard-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .dashboard-two-col { grid-template-columns: 1fr; }
+}
+
+/* urgent-item-rich — перенос текста */
+.urgent-item-rich .urgent-text {
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.4;
+}

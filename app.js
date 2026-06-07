@@ -417,6 +417,7 @@ function filterDept(dept) {
     b.classList.toggle('active', b.dataset.dept === dept);
   });
   renderPublished(); renderDraft(); renderDashboard();
+  if (currentView === 'calendar') renderCalendar();
 }
 
 function filterCrit(crit) {
@@ -425,6 +426,7 @@ function filterCrit(crit) {
     b.classList.toggle('active', b.dataset.crit === crit);
   });
   renderPublished(); renderDraft(); renderDashboard();
+  if (currentView === 'calendar') renderCalendar();
 }
 
 function filterSearch(q) {
@@ -629,7 +631,7 @@ function changeCard(c, isDraft) {
 
   return `<div class="change-card${acked ? ' acknowledged' : ''}${c.urgent ? ' urgent-card' : ''}" onclick="openChange('${c.id}')">
     <div class="change-top">
-      <span class="change-number">#${c.num || '—'}</span>
+      
       <div class="change-title-group">
         <div class="change-category">${c.category}</div>
         <div class="change-title">${urgent}${c.title}</div>
@@ -1068,12 +1070,12 @@ function _doExportExcel() {
   // Лист 1 — Опубликованные
   const pub = getAllChanges().filter(c => !c.type || c.type === 'published');
   const pubRows = [
-    ['№','Категория','Суть изменения','Нормативный акт','Дата вступления',
+    ['Категория','Суть изменения','Нормативный акт','Дата вступления',
      'Штрафные санкции','Критичность','Влияние на компанию','Митигация риска',
      'Срок адаптации','Департамент','Статус']
   ];
   pub.forEach(c => pubRows.push([
-    c.num, c.category, c.summary, c.normAct||'—',
+    c.category, c.summary, c.normAct||'—',
     formatDate(c.effectiveDate), c.sanctions||'—', c.criticality||'—',
     c.impact||'—', c.mitigation||'—', c.deadline||'—',
     (c.departments||[]).join(', '), c.status||'—'
@@ -1154,7 +1156,7 @@ function exportWord() {
 
   pub.forEach(c => {
     const cc = c.criticality==='Высокая'?'high':c.criticality==='Средняя'?'med':c.criticality==='Низкая'?'low':'none';
-    html += `<h3>#${c.num} ${c.title}</h3>
+    html += `<h3>${c.title}</h3>
     <div class="meta">
       <b>Категория:</b> ${c.category} &nbsp;|&nbsp;
       <b>Критичность:</b> <span class="crit-${cc}">${c.criticality||'—'}</span> &nbsp;|&nbsp;
@@ -1268,7 +1270,7 @@ function exportPDF() {
     const cmts = getComments(c.id);
     html += `<div class="card">
       <div class="card-title">
-        <span class="card-num">#${c.num}</span>${c.title}
+        ${c.title}
       </div>
       <div class="meta-row">
         <span class="badge" style="${cs}; padding:2pt 7pt; font-size:7.5pt; font-weight:bold">${c.criticality||'—'}</span>
@@ -1394,7 +1396,7 @@ function editorCard(c) {
 
   return `<div class="editor-card" id="ecard-${c.id}">
     <div class="editor-card-header">
-      <span class="change-number">#${c.num}</span>
+      
       <span class="editor-card-title">${c.title}</span>
       <div class="editor-card-actions">
         <button class="editor-btn-edit" onclick="openEditModal('${c.id}')">✎ Редактировать</button>
@@ -1421,6 +1423,10 @@ function openEditModal(id) {
     <div class="modal-cat">${isDraft ? 'Проектный НПА' : 'Опубликованный НПА'} · редактирование</div>
     <div class="modal-title" style="margin-bottom:20px">${c.title}</div>
     <form class="admin-form" onsubmit="saveEdit(event, '${id}')">
+      <div class="form-group">
+        <label>Заголовок</label>
+        <input name="title" value="${(c.title||'').replace(/"/g,'&quot;')}" required placeholder="Краткий заголовок НПА…">
+      </div>
       <div class="form-group">
         <label>Категория</label>
         <input name="category" value="${(c.category||'').replace(/"/g,'&quot;')}" required>
@@ -1821,7 +1827,7 @@ function renderAnalytics() {
           </thead>
           <tbody>
             ${pub.map(c => `<tr>
-              <td class="an-npa-cell" onclick="openChange('${c.id}')">#${c.num} ${c.title.substring(0,50)}…</td>
+              <td class="an-npa-cell" onclick="openChange('${c.id}')">${c.title.substring(0,55)}…</td>
               ${DEPARTMENTS.map(d => {
                 const relevant = (c.departments||[]).some(cd=>cd===d||cd==='Все');
                 if (!relevant) return '<td class="an-cell-na">—</td>';
@@ -1922,7 +1928,7 @@ function renderRiskMatrix() {
                 return `<div class="risk-cell ${rc}">
                   ${items.length ? items.map(c=>
                     `<div class="risk-item" onclick="openChange('${c.id}')" title="${c.title}">
-                      <span class="risk-item-num">#${c.num}</span>
+                      <span class="risk-item-num" style="font-size:9px;font-weight:600;letter-spacing:0">${c.title.substring(0,12)}…</span>
                       <span class="risk-item-title">${c.title.substring(0,40)}${c.title.length>40?'…':''}</span>
                     </div>`
                   ).join('') : `<div class="risk-cell-empty"></div>`}
@@ -1951,7 +1957,7 @@ function renderRiskMatrix() {
     <!-- НПА без матрицы (нет критичности) -->
     ${pub.filter(c=>c.criticality==='Отсутствует'||!c.criticality).length ?
       `<div style="margin-top:16px;font-size:12px;color:var(--text-3)">
-        ⬡ НПА без риска (не отображаются на матрице): ${pub.filter(c=>!getCritLevel(c)).map(c=>'#'+c.num).join(', ')}
+        ⬡ НПА без риска (не отображаются на матрице): ${pub.filter(c=>!getCritLevel(c)).map(c=>c.title.substring(0,30)).join(', ')}
       </div>` : ''}`;
 }
 
@@ -2441,7 +2447,7 @@ function renderAiResults(items) {
       <div class="ai-card-header">
         <label class="ai-card-check">
           <input type="checkbox" id="ai-check-${i}" checked>
-          <span class="ai-card-num">#${i+1}</span>
+          
         </label>
         <div class="ai-card-info">
           <div class="ai-card-cat">${c.category || '—'}</div>

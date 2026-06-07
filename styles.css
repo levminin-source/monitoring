@@ -638,15 +638,7 @@ body {
   margin-bottom: 12px;
 }
 .change-number {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: #fff;
-  background: var(--accent);
-  padding: 3px 8px;
-  border-radius: 2px;
-  flex-shrink: 0;
-  margin-top: 2px;
-  font-weight: 700;
+  display: none; /* нумерация скрыта — используется только в экспорте и аналитике */
 }
 .change-title-group { flex: 1; min-width: 0; }
 .change-category {

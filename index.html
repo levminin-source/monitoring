@@ -404,26 +404,14 @@
           </div>
         </div>
 
-        <div class="dashboard-two-col">
-          <div class="card" style="margin-bottom:0">
-            <div class="card-header">
-              <div class="card-header-left">
-                <h3>Актуальные к исполнению</h3>
-                <span class="card-filter-note">Важные законы, которые уже вступили в силу или вступят скоро — требуют вашего внимания. Показываются изменения за последние 3 месяца и предстоящие. <button class="card-filter-link" onclick="setView('published')">Смотреть все →</button></span>
-              </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-header-left">
+              <h3>Актуальные к исполнению</h3>
+              <span class="card-filter-note">Важные законы, которые уже вступили в силу или вступят скоро — требуют вашего внимания. Показываются изменения за последние 3 месяца и предстоящие. <button class="card-filter-link" onclick="setView('published')">Смотреть все →</button></span>
             </div>
-            <div id="urgent-list" class="urgent-list"></div>
           </div>
-
-          <div class="card" style="margin-bottom:0">
-            <div class="card-header">
-              <div class="card-header-left">
-                <h3>Что нового</h3>
-                <span class="card-filter-note">Последние важные и средние изменения — законы и законопроекты, за которыми стоит следить. <button class="card-filter-link" onclick="setView('published')">Все изменения →</button></span>
-              </div>
-            </div>
-            <div class="digest-grid" id="digest-grid"></div>
-          </div>
+          <div id="urgent-list" class="urgent-list"></div>
         </div>
 
         <div class="card" id="ack-summary-card" style="display:none">
@@ -432,6 +420,16 @@
             <span class="card-hint">по департаментам</span>
           </div>
           <div id="ack-summary" class="ack-summary"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-header-left">
+              <h3>Что нового</h3>
+              <span class="card-filter-note">Последние важные и средние изменения — законы и законопроекты, за которыми стоит следить. <button class="card-filter-link" onclick="setView('published')">Все изменения →</button></span>
+            </div>
+          </div>
+          <div class="digest-grid" id="digest-grid"></div>
         </div>
 
         <div class="card">

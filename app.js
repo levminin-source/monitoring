@@ -418,6 +418,7 @@ function filterDept(dept) {
   });
   renderPublished(); renderDraft(); renderDashboard();
   if (currentView === 'calendar') renderCalendar();
+  updateResetBtn();
 }
 
 function filterCrit(crit) {
@@ -427,6 +428,7 @@ function filterCrit(crit) {
   });
   renderPublished(); renderDraft(); renderDashboard();
   if (currentView === 'calendar') renderCalendar();
+  updateResetBtn();
 }
 
 function filterSearch(q) {
@@ -447,6 +449,20 @@ function filterAck(val) {
     b.classList.toggle('active', b.dataset.ack === val);
   });
   renderPublished();
+  updateResetBtn();
+}
+
+function resetAllFilters() {
+  filterDept('all');
+  filterCrit('all');
+  filterAck('all');
+}
+
+function updateResetBtn() {
+  const wrap = document.getElementById('filter-reset-wrap');
+  if (!wrap) return;
+  const active = activeDept !== 'all' || activeCrit !== 'all' || activeAck !== 'all';
+  wrap.style.display = active ? '' : 'none';
 }
 
 function applyFilters(changes) {
@@ -552,39 +568,123 @@ function renderDashboard() {
   animateStatNumber(document.getElementById('stat-pending'), isAdmin() ? '—' : pending);
   document.getElementById('badge-comments').textContent = Object.values(store.comments).flat().length;
 
-  const urgent = PUBLISHED_CHANGES
-    .filter(c => c.effectiveDate && c.effectiveDate !== '—')
-    .sort((a,b) => new Date(a.effectiveDate) - new Date(b.effectiveDate))
-    .slice(0, 5);
-  document.getElementById('urgent-list').innerHTML = urgent.map(c => `
-    <div class="urgent-item" onclick="openChange('${c.id}')">
-      <span class="urgent-date">${formatDate(c.effectiveDate)}</span>
-      <span class="urgent-text">${c.title}</span>
-      <span class="urgent-dept">${c.departments[0]}</span>
-    </div>`).join('') || '<div class="empty-state"><p>Нет срочных изменений</p></div>';
+  // ── Актуальные к исполнению ──
+  // Все опубликованные (базовые + добавленные), фильтр: Высокая/Средняя,
+  // окно: не старше 30 дней после вступления и все будущие
+  const allPub = getAllChanges().filter(c => c.type !== 'draft');
+  const now = new Date();
+  const cutoff = new Date(now); cutoff.setDate(cutoff.getDate() - 30);
 
-  document.getElementById('ack-summary').innerHTML = depts.map(d => {
-    const pct = deptAckPct(d);
-    return `<div class="ack-dept-row">
-      <span class="ack-dept-name">${d}</span>
-      <div class="ack-bar-track"><div class="ack-bar-fill" style="width:${pct}%"></div></div>
-      <span class="ack-pct">${pct}%</span>
+  const actualItems = allPub
+    .filter(c => {
+      if (!c.effectiveDate || c.effectiveDate === '—') return false;
+      const d = new Date(c.effectiveDate);
+      if (isNaN(d)) return false;
+      if (d < cutoff) return false; // старше 30 дней — скрываем
+      const crit = c.criticality;
+      return crit === 'Высокая' || crit === 'Средняя';
+    })
+    .sort((a, b) => new Date(a.effectiveDate) - new Date(b.effectiveDate));
+
+  document.getElementById('urgent-list').innerHTML = actualItems.length
+    ? actualItems.map(c => {
+        const d = new Date(c.effectiveDate);
+        const daysLeft = Math.ceil((d - now) / 86400000);
+        const isPast = daysLeft < 0;
+        const cc = critClass(c.criticality);
+        const deptList = (c.departments||[]).filter(x => x !== 'Все').slice(0,2)
+          .map(dep => `<span class="badge badge-dept">${dep}</span>`).join('');
+        const daysBadge = isPast
+          ? `<span class="deadline-badge deadline-past">истёк ${Math.abs(daysLeft)} дн. назад</span>`
+          : daysLeft <= 30
+            ? `<span class="deadline-badge deadline-urgent">⚡ ${daysLeft} дн.</span>`
+            : `<span class="deadline-badge deadline-soon">⏱ ${daysLeft} дн.</span>`;
+        return `<div class="urgent-item urgent-item-rich" onclick="openChange('${c.id}')">
+          <div class="urgent-item-left">
+            <span class="urgent-date">${formatDate(c.effectiveDate)}</span>
+            ${daysBadge}
+          </div>
+          <div class="urgent-item-body">
+            <span class="urgent-text">${c.title}</span>
+            <div class="urgent-meta">${deptList}<span class="badge badge-${cc}">${c.criticality}</span></div>
+          </div>
+        </div>`;
+      }).join('')
+    : '<div class="empty-state"><p>Нет актуальных изменений</p></div>';
+
+  // ── Статус ознакомления (только для админа) ──
+  const ackCard = document.getElementById('ack-summary-card');
+  if (ackCard) ackCard.style.display = isAdmin() ? '' : 'none';
+  if (isAdmin()) {
+    document.getElementById('ack-summary').innerHTML = depts.map(d => {
+      const pct = deptAckPct(d);
+      return `<div class="ack-dept-row">
+        <span class="ack-dept-name">${d}</span>
+        <div class="ack-bar-track"><div class="ack-bar-fill" style="width:${pct}%"></div></div>
+        <span class="ack-pct">${pct}%</span>
+      </div>`;
+    }).join('');
+  }
+
+  // ── Дайджест — все НПА, сгруппированные по критичности ──
+  const allChanges = getAllChanges();
+  const critOrder = ['Высокая','Средняя','Низкая','Отсутствует'];
+  const digestHtml = critOrder.map(crit => {
+    const group = allChanges.filter(c => (c.criticality || 'Отсутствует') === crit);
+    if (!group.length) return '';
+    const cc = critClass(crit);
+    return `<div class="digest-group">
+      <div class="digest-group-label badge badge-${cc}">${crit}</div>
+      ${group.map(c => {
+        const isDraft = c.type === 'draft';
+        return `<div class="digest-card" onclick="openChange('${c.id}')">
+          <div class="digest-cat">${isDraft ? '◎ Проектный · ' : ''}${c.category}</div>
+          <div class="digest-title">${c.title}</div>
+          <div class="digest-meta">
+            ${!isDraft && c.effectiveDate && c.effectiveDate !== '—'
+              ? `<span class="badge badge-dept">${formatDate(c.effectiveDate)}</span>` : ''}
+            ${isDraft && c.probability
+              ? `<span class="badge badge-prob">${c.probability}</span>` : ''}
+            ${(c.departments||[]).filter(x=>x!=='Все').slice(0,2)
+              .map(d=>`<span class="badge badge-dept">${d}</span>`).join('')}
+          </div>
+        </div>`;
+      }).join('')}
     </div>`;
   }).join('');
 
-  document.getElementById('digest-grid').innerHTML =
-    [...PUBLISHED_CHANGES, ...DRAFT_CHANGES].slice(0,6).map(c => {
-      const cc = critClass(c.criticality || '');
-      return `<div class="digest-card" onclick="openChange('${c.id}')">
-        <div class="digest-cat">${c.category}</div>
-        <div class="digest-title">${c.title}</div>
-        <div class="digest-meta">
-          ${c.criticality ? `<span class="badge badge-${cc}">${c.criticality}</span>` : ''}
-          ${c.probability ? `<span class="badge badge-prob">${c.probability}</span>`  : ''}
-          <span class="badge badge-dept">${c.departments[0]}</span>
-        </div>
-      </div>`;
-    }).join('');
+  document.getElementById('digest-grid').innerHTML = digestHtml
+    || '<div class="empty-state"><p>Нет данных</p></div>';
+
+  // ── Последние комментарии ──
+  const dcContainer = document.getElementById('dashboard-comments');
+  if (dcContainer) {
+    const allCmts = [];
+    Object.entries(store.comments).forEach(([id, cmts]) => {
+      const c = getAllChanges().find(x => x.id === id);
+      if (!c) return;
+      cmts.forEach(cm => {
+        if (cm.type === 'ack') return; // ознакомления не показываем
+        allCmts.push({ ...cm, changeId: id, changeTitle: c.title });
+      });
+    });
+    // Сортируем по времени — последние сверху, берём 8
+    const recent = allCmts.reverse().slice(0, 8);
+    dcContainer.innerHTML = recent.length
+      ? recent.map(cm => {
+          const typeLabel = cm.type === 'issue' ? '⚠ Вопрос' : '💬';
+          return `<div class="dc-item" onclick="openChange('${cm.changeId}')">
+            <div class="dc-meta">
+              <span class="dc-author">${cm.author || '—'}</span>
+              <span class="dc-time">${cm.time || ''}</span>
+              <span class="dc-type ${cm.type}">${typeLabel}</span>
+            </div>
+            <div class="dc-npa">→ ${cm.changeTitle}</div>
+            ${cm.text ? `<div class="dc-text">${cm.text}</div>` : ''}
+          </div>`;
+        }).join('')
+      : '<div class="empty-state"><p>Комментариев пока нет</p></div>';
+  }
 }
 
 // ============================================================
@@ -2369,15 +2469,29 @@ function clearTourHighlight() {
 function initTourButton() {
   const done = localStorage.getItem('compliance_tour_done');
   const btn = document.getElementById('tour-btn');
-  if (!done && btn) {
-    btn.classList.add('tour-btn-pulse');
-    // Небольшая задержка — показываем подсказку что есть обучение
-    setTimeout(() => {
-      if (!tourActive) {
-        showToast('💡 Первый раз? Нажмите «?» для обучающего тура', '');
-      }
-    }, 2000);
+  if (btn) {
+    if (!done) btn.classList.add('tour-btn-pulse');
   }
+  if (!done && !isAdmin()) {
+    // Первый вход — показываем приветственное окно с небольшой задержкой
+    setTimeout(() => {
+      if (!tourActive) showWelcomeModal();
+    }, 1200);
+  }
+}
+
+function showWelcomeModal() {
+  const overlay = document.getElementById('welcome-modal-overlay');
+  if (overlay) overlay.classList.add('open');
+}
+
+function closeWelcomeModal(startTourNow) {
+  const overlay = document.getElementById('welcome-modal-overlay');
+  if (overlay) overlay.classList.remove('open');
+  localStorage.setItem('compliance_tour_done', 'welcomed');
+  const btn = document.getElementById('tour-btn');
+  if (btn) btn.classList.add('tour-btn-pulse');
+  if (startTourNow) setTimeout(startTour, 300);
 }
 
 function showLoginHelp() {

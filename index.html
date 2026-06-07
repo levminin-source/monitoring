@@ -306,6 +306,13 @@
         <button class="crit-btn none"   onclick="filterCrit('Отсутствует')" data-crit="Отсутствует">Нет риска</button>
       </div>
 
+      <div class="sidebar-divider"></div>
+      <div class="filter-reset-wrap" id="filter-reset-wrap" style="display:none">
+        <button class="btn-filter-reset" onclick="resetAllFilters()">
+          <span>✕</span> Сбросить фильтры
+        </button>
+      </div>
+
       <div class="sidebar-bottom">
         <button class="btn-admin" id="btn-add-change" onclick="openAdminPanel()" style="display:none">⊕ Добавить изменение</button>
         <button class="btn-export" onclick="openExportModal()">↓ Экспорт отчёта</button>
@@ -397,29 +404,38 @@
           </div>
         </div>
 
-        <div class="dashboard-row">
-          <div class="card">
-            <div class="card-header">
-              <h3>Срочные к исполнению</h3>
-              <span class="card-hint">по дате вступления</span>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-header-left">
+              <h3>Актуальные к исполнению</h3>
+              <span class="card-filter-note">Высокая и Средняя критичность · последние 3 мес. и предстоящие · <button class="card-filter-link" onclick="setView('published')">все НПА →</button></span>
             </div>
-            <div id="urgent-list" class="urgent-list"></div>
           </div>
-          <div class="card">
-            <div class="card-header">
-              <h3>Статус ознакомления</h3>
-              <span class="card-hint">по департаментам</span>
-            </div>
-            <div id="ack-summary" class="ack-summary"></div>
+          <div id="urgent-list" class="urgent-list"></div>
+        </div>
+
+        <div class="card" id="ack-summary-card">
+          <div class="card-header">
+            <h3>Статус ознакомления</h3>
+            <span class="card-hint">по департаментам</span>
           </div>
+          <div id="ack-summary" class="ack-summary"></div>
         </div>
 
         <div class="card">
           <div class="card-header">
-            <h3 id="digest-title">Compliance-дайджест</h3>
-            <span class="card-hint">сформирован автоматически</span>
+            <h3>Compliance-дайджест</h3>
+            <span class="card-hint">все НПА по критичности</span>
           </div>
           <div class="digest-grid" id="digest-grid"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>Последние комментарии</h3>
+            <button class="card-filter-link" style="font-size:11px" onclick="setView('comments')">все →</button>
+          </div>
+          <div id="dashboard-comments" class="dashboard-comments-list"></div>
         </div>
       </div>
 
@@ -748,6 +764,29 @@
       </div>
       <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);font-size:12px;color:var(--text-3);text-align:center">
         По вопросам доступа: обратитесь к юридическому департаменту Marshall
+      </div>
+    </div>
+  </div>
+
+  <!-- WELCOME MODAL — показывается только при первом входе -->
+  <div class="modal-overlay" id="welcome-modal-overlay">
+    <div class="modal" style="max-width:480px;text-align:center" onclick="event.stopPropagation()">
+      <div style="font-size:36px;margin-bottom:8px">⚖</div>
+      <div class="modal-cat">Добро пожаловать</div>
+      <div class="modal-title" style="margin-bottom:12px">Marshall Compliance Monitor</div>
+      <p style="font-size:13px;color:var(--text-2);line-height:1.6;margin-bottom:20px">
+        Здесь вы найдёте актуальные изменения в законодательстве, которые касаются вашей работы.<br>
+        Читайте, отмечайте ознакомление и задавайте вопросы юристу прямо в системе.
+      </p>
+      <div style="background:var(--bg-3);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:var(--radius-sm);padding:12px 16px;text-align:left;margin-bottom:20px">
+        <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px">💡 С чего начать?</div>
+        <div style="font-size:12px;color:var(--text-2);line-height:1.5">
+          Нажмите кнопку <strong>«?»</strong> в правом верхнем углу — интерактивный тур за 2 минуты покажет все возможности системы.
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:center">
+        <button class="btn-secondary" onclick="closeWelcomeModal(false)" style="min-width:120px">Пропустить</button>
+        <button class="btn-primary" onclick="closeWelcomeModal(true)" style="min-width:160px">Начать тур →</button>
       </div>
     </div>
   </div>

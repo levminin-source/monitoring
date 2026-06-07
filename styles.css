@@ -2781,3 +2781,141 @@ body {
   flex-shrink: 0;
 }
 .toast-undo-btn:hover { background: rgba(255,255,255,0.28); }
+
+/* =====================================================================
+   DASHBOARD — актуальные к исполнению, дайджест по группам
+   ===================================================================== */
+
+/* Заголовок карточки с примечанием */
+.card-header-left { display: flex; flex-direction: column; gap: 4px; }
+.card-filter-note {
+  font-size: 11px;
+  color: var(--text-3);
+  line-height: 1.4;
+}
+.card-filter-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 11px;
+  font-family: var(--font);
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.card-filter-link:hover { color: var(--accent-2); }
+
+/* Улучшенная строка актуальных */
+.urgent-item-rich {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 14px;
+}
+.urgent-item-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 90px;
+  flex-shrink: 0;
+}
+.urgent-item-body {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
+  min-width: 0;
+}
+.urgent-meta {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+/* Дайджест — группы по критичности */
+.digest-group { margin-bottom: 18px; }
+.digest-group:last-child { margin-bottom: 0; }
+.digest-group-label {
+  display: inline-block;
+  margin-bottom: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+/* В режиме группировки — одна колонка внутри группы */
+.digest-group .digest-card {
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+}
+.digest-group .digest-card:last-child { margin-bottom: 0; }
+.digest-group .digest-title { margin-bottom: 0; flex: 1; min-width: 0; font-size: 13px; }
+.digest-group .digest-cat { font-size: 10px; color: var(--text-3); min-width: 130px; flex-shrink: 0; }
+.digest-group .digest-meta { flex-shrink: 0; }
+
+/* Переопределяем digest-grid в режиме дайджеста по группам */
+#digest-grid { display: block; }
+
+
+/* ── Кнопка сброса фильтров ── */
+.filter-reset-wrap {
+  padding: 0 12px 4px;
+}
+.btn-filter-reset {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 12px;
+  background: rgba(200,16,46,0.12);
+  border: 1px solid rgba(200,16,46,0.35);
+  border-radius: var(--radius-sm);
+  color: var(--accent);
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  letter-spacing: 0.03em;
+}
+.btn-filter-reset:hover {
+  background: rgba(200,16,46,0.22);
+  border-color: rgba(200,16,46,0.6);
+}
+[data-theme="light"] .btn-filter-reset {
+  background: rgba(200,16,46,0.08);
+  border-color: rgba(200,16,46,0.25);
+}
+
+/* ── Комментарии в Обзоре ── */
+.dashboard-comments-list { display: flex; flex-direction: column; gap: 8px; }
+.dc-item {
+  padding: 9px 12px;
+  background: var(--bg-3);
+  border-radius: var(--radius-sm);
+  border-left: 2px solid var(--border-hover);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.dc-item:hover { background: var(--bg-4); border-left-color: var(--accent); }
+.dc-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 3px;
+  flex-wrap: wrap;
+}
+.dc-author { font-size: 12px; font-weight: 700; color: var(--text); }
+.dc-time   { font-size: 11px; color: var(--text-3); font-family: var(--mono); }
+.dc-type   { font-size: 10px; font-weight: 600; }
+.dc-type.issue  { color: var(--medium); }
+.dc-type.comment { color: var(--text-3); }
+.dc-npa  { font-size: 11px; color: var(--accent); margin-bottom: 3px; }
+.dc-text { font-size: 12px; color: var(--text-2); line-height: 1.4;
+           white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

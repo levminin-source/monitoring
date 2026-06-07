@@ -612,30 +612,22 @@ function renderDashboard() {
       }).join('')
     : '<div class="empty-state"><p>Нет актуальных изменений</p></div>';
 
-  // ── Статус ознакомления (только для админа) ──
+  // ── Статус ознакомления — убран из Обзора, живёт в Аналитике ──
   const ackCard = document.getElementById('ack-summary-card');
-  if (ackCard) ackCard.style.display = isAdmin() ? '' : 'none';
-  if (isAdmin()) {
-    document.getElementById('ack-summary').innerHTML = depts.map(d => {
-      const pct = deptAckPct(d);
-      return `<div class="ack-dept-row">
-        <span class="ack-dept-name">${d}</span>
-        <div class="ack-bar-track"><div class="ack-bar-fill" style="width:${pct}%"></div></div>
-        <span class="ack-pct">${pct}%</span>
-      </div>`;
-    }).join('');
-  }
+  if (ackCard) ackCard.style.display = 'none';
 
-  // ── Дайджест — все НПА, сгруппированные по критичности ──
+  // ── Дайджест — Высокая и Средняя критичность, по 5 последних ──
   const allChanges = getAllChanges();
-  const critOrder = ['Высокая','Средняя','Низкая','Отсутствует'];
-  const digestHtml = critOrder.map(crit => {
-    const group = allChanges.filter(c => (c.criticality || 'Отсутствует') === crit);
+  const DIGEST_LIMIT = 5;
+  const digestHtml = ['Высокая','Средняя'].map(crit => {
+    const group = allChanges.filter(c => c.criticality === crit);
     if (!group.length) return '';
     const cc = critClass(crit);
+    const shown = group.slice(-DIGEST_LIMIT).reverse(); // последние добавленные
+    const extra = group.length - DIGEST_LIMIT;
     return `<div class="digest-group">
       <div class="digest-group-label badge badge-${cc}">${crit}</div>
-      ${group.map(c => {
+      ${shown.map(c => {
         const isDraft = c.type === 'draft';
         return `<div class="digest-card" onclick="openChange('${c.id}')">
           <div class="digest-cat">${isDraft ? '◎ Проектный · ' : ''}${c.category}</div>
@@ -650,6 +642,9 @@ function renderDashboard() {
           </div>
         </div>`;
       }).join('')}
+      ${extra > 0 ? `<div class="digest-more" onclick="filterCrit('${crit}');setView('published')">
+        + ещё ${extra} в разделе «Опубликованные» →
+      </div>` : ''}
     </div>`;
   }).join('');
 

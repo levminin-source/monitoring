@@ -2635,11 +2635,20 @@ function renderCalendar() {
   all.forEach(c => {
     const isDraft = c.type === 'draft';
 
-    // Фильтр по департаменту для обычных сотрудников
-    const deptOk = isAdmin()
+    // Ролевой фильтр (кто смотрит)
+    const roleOk = isAdmin()
       || currentUser === 'Руководство'
       || (c.departments || []).some(d => d === currentUser || d === 'Все');
+    if (!roleOk) return;
+
+    // Фильтр сайдбара по департаменту
+    const deptOk = activeDept === 'all'
+      || (c.departments || []).some(d => d === activeDept || d === 'Все');
     if (!deptOk) return;
+
+    // Фильтр сайдбара по критичности
+    const critOk = activeCrit === 'all' || c.criticality === activeCrit;
+    if (!critOk) return;
 
     // Опубликованные — дата вступления в силу
     if (!isDraft && c.effectiveDate && c.effectiveDate !== '—') {

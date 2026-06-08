@@ -42,6 +42,22 @@
       justify-content: center;
     }
     #login-screen.visible { display: flex; }
+    #login-screen::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(200,16,46,0.06) 39px, rgba(200,16,46,0.06) 40px),
+        repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(200,16,46,0.06) 39px, rgba(200,16,46,0.06) 40px);
+      pointer-events: none;
+    }
+    #login-screen::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent) 0%, #ff4d6d 50%, var(--accent) 100%);
+    }
 
     .login-card {
       background: var(--bg-2);
@@ -326,7 +342,10 @@
       <header class="top-bar">
         <div class="top-bar-left">
           <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
-          <div class="page-title" id="page-title">Обзор</div>
+          <div>
+            <div class="page-title" id="page-title">Обзор</div>
+            <span class="page-subtitle" id="page-subtitle"></span>
+          </div>
         </div>
         <div class="top-bar-right">
           <div class="search-wrapper">
@@ -426,7 +445,7 @@
           <div class="card-header">
             <div class="card-header-left">
               <h3>Что нового</h3>
-              <span class="card-filter-note">Последние важные и средние изменения — законы и законопроекты, за которыми стоит следить. <button class="card-filter-link" onclick="setView('published')">Все изменения →</button></span>
+              <span class="card-filter-note">Последние важные изменения — законы и законопроекты, за которыми стоит следить. <button class="card-filter-link" onclick="setView('published')">Все изменения →</button></span>
             </div>
           </div>
           <div class="digest-grid" id="digest-grid"></div>

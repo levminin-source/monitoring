@@ -230,17 +230,18 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 9px 12px;
+  padding: 8px 12px;
   border: none;
   background: transparent;
   color: var(--text-2);
   cursor: pointer;
   border-radius: var(--radius-sm);
   font-family: var(--font);
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 500;
   text-align: left;
-  transition: all 0.15s;
+  transition: background 0.15s, color 0.15s;
+  width: 100%;
 }
 .nav-item:hover { background: var(--bg-3); color: var(--text); }
 .nav-item.active {
@@ -626,9 +627,12 @@ body {
 .change-card:hover {
   border-color: var(--border-hover);
   border-left-color: var(--accent);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(0,0,0,0.25);
 }
+.change-card.high-card  { border-left-color: var(--high); }
+.change-card.med-card   { border-left-color: var(--medium); }
+.change-card.low-card   { border-left-color: var(--low); }
 .change-card.acknowledged { border-left-color: var(--low); }
 
 .change-top {
@@ -668,6 +672,18 @@ body {
 .badge-none    { background: var(--none-bg);   color: var(--none);   border: 1px solid rgba(74,127,165,0.25); }
 .badge-status  { background: var(--bg-3);      color: var(--text-2); border: 1px solid var(--border); }
 .badge-dept    { background: var(--accent);    color: #fff;          border: none; }
+.badge-dept-ДУП { background: rgba(55,138,221,0.18); color: #7bb8f0; border: 1px solid rgba(55,138,221,0.35); }
+.badge-dept-ФЭД { background: rgba(127,119,221,0.18); color: #b0acf0; border: 1px solid rgba(127,119,221,0.35); }
+.badge-dept-КД  { background: rgba(29,158,117,0.18); color: #5dd4a8; border: 1px solid rgba(29,158,117,0.35); }
+.badge-dept-ДЛ  { background: rgba(200,16,46,0.14); color: #ff8a9a; border: 1px solid rgba(200,16,46,0.3); }
+.badge-dept-ОД  { background: rgba(212,130,10,0.18); color: #f5b840; border: 1px solid rgba(212,130,10,0.35); }
+.badge-dept-ДЦТ { background: rgba(160,80,200,0.18); color: #d090f0; border: 1px solid rgba(160,80,200,0.35); }
+[data-theme="light"] .badge-dept-ДУП { background: #e6f1fb; color: #185fa5; border-color: #a8c8f0; }
+[data-theme="light"] .badge-dept-ФЭД { background: #eeedfe; color: #534ab7; border-color: #afa9ec; }
+[data-theme="light"] .badge-dept-КД  { background: #e1f5ee; color: #0f6e56; border-color: #5dcaa5; }
+[data-theme="light"] .badge-dept-ДЛ  { background: #fcebeb; color: #a32d2d; border-color: #f09595; }
+[data-theme="light"] .badge-dept-ОД  { background: #faeeda; color: #854f0b; border-color: #ef9f27; }
+[data-theme="light"] .badge-dept-ДЦТ { background: #f3e8fc; color: #7a28c0; border-color: #c890e8; }
 .badge-ack     { background: var(--low-bg);    color: var(--low);    border: 1px solid rgba(39,174,96,0.3); }
 .badge-prob    { background: rgba(74,127,165,0.15); color: var(--accent-2); border: 1px solid rgba(74,127,165,0.3); }
 
@@ -1161,10 +1177,13 @@ body {
 [data-theme="light"] .change-card,
 [data-theme="light"] .stat-card,
 [data-theme="light"] .digest-card {
+  background: #fff;
+  border-color: #cdc5bb;
   box-shadow: 0 1px 4px rgba(13,30,52,0.07);
 }
 [data-theme="light"] .change-card:hover,
 [data-theme="light"] .digest-card:hover {
+  border-color: var(--accent);
   box-shadow: 0 4px 16px rgba(13,30,52,0.12);
 }
 
@@ -2949,4 +2968,136 @@ body {
   white-space: normal;
   word-break: break-word;
   line-height: 1.4;
+}
+
+/* =====================================================================
+   DESIGN IMPROVEMENTS — типографика, скроллбар, шапка, пустые состояния, непрочитанное
+   ===================================================================== */
+
+/* ── 1. Скроллбар ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(200,16,46,0.35); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(200,16,46,0.6); }
+[data-theme="light"] ::-webkit-scrollbar-thumb { background: rgba(200,16,46,0.25); }
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: rgba(200,16,46,0.5); }
+
+/* ── 2. Типографика карточек — больше иерархии ── */
+.change-category {
+  font-size: 10px;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 5px;
+  font-weight: 600;
+}
+.change-title {
+  font-size: 14.5px;
+  font-weight: 700;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+}
+.change-summary {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-2);
+  margin-top: 2px;
+}
+.change-bottom {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+/* ── 3. Шапка страницы — крупнее, с подзаголовком ── */
+.page-title {
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fff;
+  line-height: 1;
+}
+.page-subtitle {
+  font-size: 11px;
+  color: var(--text-3);
+  letter-spacing: 0.04em;
+  margin-top: 2px;
+  font-weight: 400;
+  display: block;
+}
+[data-theme="light"] .page-title { color: var(--text); }
+[data-theme="light"] .page-subtitle { color: var(--text-3); }
+
+/* ── 4. Анимация hover на карточках — полоска ── */
+.change-card {
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.change-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  border-radius: 0;
+  background: transparent;
+  transition: background 0.18s ease;
+}
+.change-card.high-card::before { background: var(--high); }
+.change-card.med-card::before  { background: var(--medium); }
+.change-card.low-card::before  { background: var(--low); }
+.change-card:hover::before     { opacity: 1; }
+
+/* ── 5. Пустые состояния — улучшенные ── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+  gap: 10px;
+}
+.empty-state .icon {
+  font-size: 32px;
+  opacity: 0.35;
+  margin-bottom: 4px;
+}
+.empty-state p {
+  font-size: 13.5px;
+  color: var(--text-3);
+  line-height: 1.5;
+}
+.empty-state .empty-hint {
+  font-size: 12px;
+  color: var(--text-3);
+  opacity: 0.7;
+}
+.empty-state .empty-action {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--accent);
+  cursor: pointer;
+  background: none;
+  border: 1px solid rgba(200,16,46,0.3);
+  border-radius: var(--radius-sm);
+  padding: 5px 14px;
+  font-family: var(--font);
+  transition: background 0.15s;
+}
+.empty-state .empty-action:hover { background: rgba(200,16,46,0.1); }
+
+/* ── 6. Индикатор непрочитанного ── */
+.change-card.unread::after {
+  content: '';
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 7px;
+  height: 7px;
+  background: var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--bg-2);
+}
+[data-theme="light"] .change-card.unread::after {
+  box-shadow: 0 0 0 2px #fff;
 }

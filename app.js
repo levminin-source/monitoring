@@ -799,7 +799,7 @@ function openChange(id) {
     <div class="modal-grid">
       <div class="modal-field">
         <label>Нормативный акт</label>
-        <span>${c.normAct || '—'}</span>
+        <span>${c.normAct || '—'}${c.sourceUrl ? ` <a href="${c.sourceUrl}" target="_blank" rel="noopener" class="npa-source-link" onclick="event.stopPropagation()">↗ источник</a>` : ''}</span>
       </div>
       <div class="modal-field">
         <label>${isDraft ? 'Плановая дата' : 'Дата вступления в силу'}</label>
@@ -1133,6 +1133,7 @@ async function submitNewChange(e) {
     title:         fd.get('title') || (fd.get('category').split('/')[0].trim() + ': ' + fd.get('summary').substring(0,60) + '…'),
     summary:       fd.get('summary'),
     normAct:       fd.get('norm_act'),
+    sourceUrl:     fd.get('source_url') || null,
     effectiveDate: fd.get('effective_date'),
     sanctions:     fd.get('sanctions'),
     criticality:   fd.get('criticality'),
@@ -1564,6 +1565,10 @@ function openEditModal(id) {
         </div>
       </div>
       <div class="form-group">
+        <label>Ссылка на источник <span style="font-weight:400;color:var(--text-3)">(необязательно)</span></label>
+        <input name="source_url" type="url" value="${(c.sourceUrl||'').replace(/"/g,'&quot;')}" placeholder="https://…">
+      </div>
+      <div class="form-group">
         <label>Штрафные санкции</label>
         <input name="sanctions" value="${(c.sanctions||'').replace(/"/g,'&quot;')}">
       </div>
@@ -1622,6 +1627,7 @@ async function saveEdit(e, id) {
     category:      fd.get('category'),
     summary:       fd.get('summary'),
     normAct:       fd.get('norm_act'),
+    sourceUrl:     fd.get('source_url') || undefined,
     effectiveDate: fd.get('effective_date'),
     sanctions:     fd.get('sanctions'),
     criticality:   fd.get('criticality'),

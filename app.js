@@ -383,7 +383,17 @@ function setView(view) {
     calendar:     'Compliance-календарь',
     'admin-editor': '⚙ Редактор НПА'
   };
+  const subtitles = {
+    dashboard:    'сводка актуальных изменений',
+    published:    'законы и акты, вступившие или вступающие в силу',
+    draft:        'законопроекты и акты на стадии разработки',
+    comments:     'обсуждения и вопросы по изменениям',
+    calendar:     'события по датам вступления в силу',
+    'admin-editor': 'управление записями'
+  };
   document.getElementById('page-title').textContent = titles[view] || '';
+  const subEl = document.getElementById('page-subtitle');
+  if (subEl) subEl.textContent = subtitles[view] || '';
   if (view === 'comments')      renderAllComments();
   if (view === 'admin-editor')  setAdminTab('editor');
   if (view === 'calendar')      renderCalendar();
@@ -690,7 +700,7 @@ function renderPublished() {
   document.getElementById('badge-published').textContent = changes.length;
   document.getElementById('list-published').innerHTML = changes.length
     ? changes.map(c => changeCard(c, false)).join('')
-    : `<div class="empty-state"><div class="icon">◈</div><p>Нет изменений по выбранным фильтрам</p></div>`;
+    : `<div class="empty-state"><div class="icon">◈</div><p>Нет изменений по выбранным фильтрам</p><span class="empty-hint">Попробуйте сбросить фильтры</span><button class="empty-action" onclick="resetAllFilters()">Сбросить фильтры</button></div>`;
 }
 
 function renderDraft() {
@@ -702,7 +712,7 @@ function renderDraft() {
   document.getElementById('badge-draft').textContent = changes.length;
   document.getElementById('list-draft').innerHTML = changes.length
     ? changes.map(c => changeCard(c, true)).join('')
-    : `<div class="empty-state"><div class="icon">◎</div><p>Нет проектных изменений</p></div>`;
+    : `<div class="empty-state"><div class="icon">◎</div><p>Нет проектных изменений</p><span class="empty-hint">Здесь появятся законопроекты на стадии разработки</span></div>`;
 }
 
 function deadlineIndicator(effectiveDate) {
@@ -720,11 +730,13 @@ function changeCard(c, isDraft) {
   const cc    = critClass(c.criticality || '');
   const acked = currentUser && isAcknowledgedByUser(c.id, currentUser);
   const cnt   = commentCount(c.id);
-  const depts = (c.departments || []).map(d => `<span class="badge badge-dept">${d}</span>`).join('');
+  const depts = (c.departments || []).map(d => { const cls = ['ДУП','ФЭД','КД','ДЛ','ОД','ДЦТ'].includes(d) ? `badge-dept-${d}` : 'badge-dept'; return `<span class="badge ${cls}">${d}</span>`; }).join('');
   const urgent = c.urgent ? '<span class="badge-urgent">🔴 СРОЧНО</span>' : '';
   const ddl   = !isDraft ? deadlineIndicator(c.effectiveDate) : '';
 
-  return `<div class="change-card${acked ? ' acknowledged' : ''}${c.urgent ? ' urgent-card' : ''}" onclick="openChange('${c.id}')">
+  const critCardClass = { 'Высокая': ' high-card', 'Средняя': ' med-card', 'Низкая': ' low-card' }[c.criticality] || '';
+  const unreadClass = !isAdmin() && !isChangeSeen(c.id) ? ' unread' : '';
+  return `<div class="change-card${acked ? ' acknowledged' : ''}${c.urgent ? ' urgent-card' : ''}${critCardClass}${unreadClass}" onclick="openChange('${c.id}')">
     <div class="change-top">
       
       <div class="change-title-group">
@@ -752,7 +764,18 @@ function changeCard(c, isDraft) {
 // ============================================================
 // MODAL
 // ============================================================
+function getSeenChanges() {
+  try { return JSON.parse(localStorage.getItem('seen_changes') || '{}'); } catch { return {}; }
+}
+function markChangeSeen(id) {
+  const seen = getSeenChanges();
+  seen[id] = 1;
+  try { localStorage.setItem('seen_changes', JSON.stringify(seen)); } catch {}
+}
+function isChangeSeen(id) { return !!getSeenChanges()[id]; }
+
 function openChange(id) {
+  markChangeSeen(id);
   const c = getAllChanges().find(x => x.id === id);
   if (!c) return;
   const isDraft = DRAFT_CHANGES.some(x => x.id === id) || c.type === 'draft';

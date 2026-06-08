@@ -1595,6 +1595,7 @@ async function saveEdit(e, id) {
   const idx = store.extraChanges.findIndex(x => x.id === id);
 
   const updated = {
+    title:         fd.get('title') || undefined,
     category:      fd.get('category'),
     summary:       fd.get('summary'),
     normAct:       fd.get('norm_act'),

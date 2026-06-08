@@ -1063,6 +1063,15 @@ async function submitReply(changeId, idx) {
 // ============================================================
 // ALL COMMENTS VIEW
 // ============================================================
+let activeCommentsTab = 'comments';
+
+function setCommentsTab(tab) {
+  activeCommentsTab = tab;
+  document.querySelectorAll('.comments-tab').forEach(b =>
+    b.classList.toggle('active', b.dataset.tab === tab));
+  renderAllComments();
+}
+
 function renderAllComments() {
   const container = document.getElementById('all-comments-list');
   const all = [];
@@ -1071,41 +1080,103 @@ function renderAllComments() {
     cmts.forEach(cm => all.push({ ...cm, id, changeTitle: c ? c.title : id }));
   });
 
-  if (!all.length) {
-    container.innerHTML = `<div class="empty-state"><div class="icon">◷</div><p>Комментариев пока нет</p></div>`;
-    return;
-  }
-  // Поиск по комментариям
-  const filtered = searchQuery && searchComments
-    ? all.filter(cm =>
+  // Обновляем счётчики вкладок
+  const cntComments = all.filter(cm => cm.type !== 'ack').length;
+  const cntAcks     = all.filter(cm => cm.type === 'ack').length;
+  const elC = document.getElementById('tab-count-comments');
+  const elA = document.getElementById('tab-count-acks');
+  if (elC) elC.textContent = cntComments;
+  if (elA) elA.textContent = cntAcks;
+
+  if (activeCommentsTab === 'comments') {
+    // ── Вкладка Комментарии ──
+    let items = all.filter(cm => cm.type !== 'ack');
+
+    if (searchQuery && searchComments)
+      items = items.filter(cm =>
         (cm.text||'').toLowerCase().includes(searchQuery) ||
         (cm.author||'').toLowerCase().includes(searchQuery) ||
-        (cm.changeTitle||'').toLowerCase().includes(searchQuery))
-    : all;
+        (cm.changeTitle||'').toLowerCase().includes(searchQuery));
 
-  container.innerHTML = [...filtered].reverse().map(cm => {
-    const repliesHtml = (cm.replies||[]).map(r => `
-      <div class="reply-item" style="margin-top:6px">
+    items = [...items].reverse();
+
+    if (!items.length) {
+      container.innerHTML = `<div class="empty-state"><div class="icon">◷</div><p>Комментариев пока нет</p></div>`;
+      return;
+    }
+
+    container.innerHTML = items.map(cm => {
+      const typeLabel = cm.type === 'issue' ? '⚠ Вопрос' : '💬 Комментарий';
+      const repliesHtml = (cm.replies||[]).map(r => `
+        <div class="reply-item" style="margin-top:6px">
+          <div class="comment-meta">
+            <span class="comment-author">${r.author}</span>
+            <span class="comment-time">${r.time}</span>
+          </div>
+          ${r.text ? `<div class="comment-text">${r.text}</div>` : ''}
+        </div>`).join('');
+      return `<div class="all-comment-item type-${cm.type}" onclick="openChange('${cm.id}')">
+        <div class="all-comment-link">→ ${cm.changeTitle}</div>
         <div class="comment-meta">
-          <span class="comment-author">${r.author}</span>
-          <span class="comment-time">${r.time}</span>
+          <span class="comment-author">${cm.author}</span>
+          <span class="comment-time">${cm.time}</span>
+          <span class="comment-type-badge ${cm.type}">${typeLabel}</span>
         </div>
-        ${r.text ? `<div class="comment-text">${r.text}</div>` : ''}
-      </div>`).join('');
-    return `<div class="all-comment-item type-${cm.type}" onclick="openChange('${cm.id}')">
-      <div class="all-comment-link">→ ${cm.changeTitle}</div>
-      <div class="comment-meta">
-        <span class="comment-author">${cm.author}</span>
-        <span class="comment-time">${cm.time}</span>
-        <span class="comment-type-badge ${cm.type}">${
-          cm.type === 'ack' ? '✓ Ознакомлен' : cm.type === 'issue' ? '⚠ Вопрос' : '💬 Комментарий'
-        }</span>
-      </div>
-      ${cm.dept ? `<div class="comment-dept">${cm.dept}</div>` : ''}
-      ${cm.text ? `<div class="comment-text${cm.edited?' comment-text-edited':''}">${cm.text}</div>` : ''}
-      ${repliesHtml}
-    </div>`;
-  }).join('');
+        ${cm.text ? `<div class="comment-text${cm.edited?' comment-text-edited':''}">${cm.text}</div>` : ''}
+        ${repliesHtml}
+      </div>`;
+    }).join('');
+
+  } else {
+    // ── Вкладка Ознакомления ──
+    const acks = all.filter(cm => cm.type === 'ack');
+
+    if (!acks.length) {
+      container.innerHTML = `<div class="empty-state"><div class="icon">✓</div><p>Ознакомлений пока нет</p></div>`;
+      return;
+    }
+
+    // Группируем по НПА
+    const groups = {};
+    acks.forEach(cm => {
+      if (!groups[cm.id]) groups[cm.id] = { title: cm.changeTitle, items: [], change: getAllChanges().find(x => x.id === cm.id) };
+      groups[cm.id].items.push(cm);
+    });
+
+    // Считаем сколько должно ознакомиться (сотрудники департаментов НПА)
+    const nonAdminUsers = Object.entries(USERS).filter(([,u]) => u.role !== 'admin');
+
+    container.innerHTML = Object.entries(groups).map(([id, g]) => {
+      const depts = (g.change?.departments || []).filter(d => d !== 'Все');
+      const expected = depts.length
+        ? nonAdminUsers.filter(([,u]) => depts.includes(u.dept) || u.dept === 'Руководство')
+        : nonAdminUsers;
+      const total = expected.length;
+      const done  = g.items.length;
+
+      const pct = total > 0 ? Math.round(done / total * 100) : 0;
+
+      const rows = [...g.items].sort((a,b) => a.time > b.time ? -1 : 1).map(cm => {
+        const initials = (cm.author||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+        return `<div class="ack-row">
+          <div class="ack-avatar">${initials}</div>
+          <span class="ack-name">${cm.author}</span>
+          ${cm.dept ? `<span class="ack-dept-badge">${cm.dept}</span>` : ''}
+          <span class="ack-time">${cm.time}</span>
+          <i class="ti ti-check ack-check" aria-hidden="true"></i>
+        </div>`;
+      }).join('');
+
+      return `<div class="ack-group" onclick="openChange('${id}')">
+        <div class="ack-group-header">
+          <span class="ack-group-title">→ ${g.title}</span>
+          <span class="ack-group-stat">${done} из ${total} · ${pct}%</span>
+        </div>
+        <div class="ack-progress-bar"><div class="ack-progress-fill" style="width:${pct}%"></div></div>
+        <div class="ack-rows">${rows}</div>
+      </div>`;
+    }).join('');
+  }
 }
 
 function updateBadges() {

@@ -482,8 +482,17 @@
       <!-- COMMENTS VIEW -->
       <div id="view-comments" class="view">
         <div class="card">
-          <div class="card-header">
-            <h3>Все комментарии и подтверждения</h3>
+          <div class="comments-tabs">
+            <button class="comments-tab active" data-tab="comments" onclick="setCommentsTab('comments')">
+              <i class="ti ti-message-2" aria-hidden="true"></i>
+              Комментарии
+              <span class="comments-tab-count" id="tab-count-comments">0</span>
+            </button>
+            <button class="comments-tab" data-tab="acks" onclick="setCommentsTab('acks')">
+              <i class="ti ti-check" aria-hidden="true"></i>
+              Ознакомления
+              <span class="comments-tab-count" id="tab-count-acks">0</span>
+            </button>
           </div>
           <div id="all-comments-list" class="all-comments-list"></div>
         </div>

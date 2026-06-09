@@ -1332,14 +1332,28 @@ function renderAllComments() {
     // Группируем по НПА
     const groups = {};
     acks.forEach(cm => {
-      if (!groups[cm.id]) groups[cm.id] = { title: cm.changeTitle, items: [], change: getAllChanges().find(x => x.id === cm.id) };
+      if (!groups[cm.id]) groups[cm.id] = { title: cm.changeTitle, items: [], change: getAllChanges().find(x => x.id === cm.id), lastTime: '' };
       groups[cm.id].items.push(cm);
+      // Запоминаем последнее время для сортировки групп
+      if (!groups[cm.id].lastTime || cm.time > groups[cm.id].lastTime) groups[cm.id].lastTime = cm.time;
     });
+
+    // Парсим дату "ДД.ММ.ГГГГ ЧЧ:ММ" в число для корректной сортировки
+    function parseAckTime(str) {
+      if (!str) return 0;
+      const m = str.match(/(\d{2})\.(\d{2})\.(\d{4})\s+(\d{2}):(\d{2})/);
+      if (!m) return 0;
+      return new Date(+m[3], +m[2]-1, +m[1], +m[4], +m[5]).getTime();
+    }
 
     // Считаем сколько должно ознакомиться (сотрудники департаментов НПА)
     const nonAdminUsers = Object.entries(USERS).filter(([,u]) => u.role !== 'admin');
 
-    container.innerHTML = Object.entries(groups).map(([id, g]) => {
+    // Сортируем группы — последнее ознакомление сверху
+    const sortedGroups = Object.entries(groups)
+      .sort((a, b) => parseAckTime(b[1].lastTime) - parseAckTime(a[1].lastTime));
+
+    container.innerHTML = sortedGroups.map(([id, g]) => {
       const depts = (g.change?.departments || []).filter(d => d !== 'Все');
       const expected = depts.length
         ? nonAdminUsers.filter(([,u]) => depts.includes(u.dept) || u.dept === 'Руководство')
@@ -1349,7 +1363,9 @@ function renderAllComments() {
 
       const pct = total > 0 ? Math.round(done / total * 100) : 0;
 
-      const rows = [...g.items].sort((a,b) => a.time > b.time ? -1 : 1).map(cm => {
+      const rows = [...g.items]
+        .sort((a, b) => parseAckTime(b.time) - parseAckTime(a.time))
+        .map(cm => {
         const initials = (cm.author||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
         return `<div class="ack-row">
           <div class="ack-avatar">${initials}</div>

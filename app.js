@@ -2498,9 +2498,9 @@ async function rejectProposal(id) {
 // EMAIL NOTIFICATIONS (EmailJS)
 // Инструкция по настройке — в README.md
 // ============================================================
-const EMAILJS_SERVICE_ID  = 'PLACEHOLDER_EMAILJS_SID';
-const EMAILJS_TEMPLATE_ID = 'PLACEHOLDER_EMAILJS_TID';
-const EMAILJS_PUBLIC_KEY  = 'PLACEHOLDER_EMAILJS_KEY';
+const EMAILJS_SERVICE_ID  = 'service_u7mo4k9';
+const EMAILJS_TEMPLATE_ID = 'template_zmp7g7t';
+const EMAILJS_PUBLIC_KEY  = 'TEl016U64K4jHvw9z';
 
 const EMAILJS_CONFIGURED = EMAILJS_SERVICE_ID !== 'PLACEHOLDER_EMAILJS_SID';
 

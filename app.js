@@ -1329,15 +1329,6 @@ function renderAllComments() {
       return;
     }
 
-    // Группируем по НПА
-    const groups = {};
-    acks.forEach(cm => {
-      if (!groups[cm.id]) groups[cm.id] = { title: cm.changeTitle, items: [], change: getAllChanges().find(x => x.id === cm.id), lastTime: '' };
-      groups[cm.id].items.push(cm);
-      // Запоминаем последнее время для сортировки групп
-      if (!groups[cm.id].lastTime || cm.time > groups[cm.id].lastTime) groups[cm.id].lastTime = cm.time;
-    });
-
     // Парсим дату "ДД.ММ.ГГГГ ЧЧ:ММ" в число для корректной сортировки
     function parseAckTime(str) {
       if (!str) return 0;
@@ -1346,12 +1337,28 @@ function renderAllComments() {
       return new Date(+m[3], +m[2]-1, +m[1], +m[4], +m[5]).getTime();
     }
 
+    // Группируем по НПА
+    const groups = {};
+    acks.forEach(cm => {
+      const c = getAllChanges().find(x => x.id === cm.id);
+      if (!groups[cm.id]) groups[cm.id] = {
+        title: (c && c.title) ? c.title : cm.changeTitle,
+        items: [],
+        change: c,
+        lastTs: 0
+      };
+      groups[cm.id].items.push(cm);
+      // Сравниваем через parseAckTime чтобы не зависеть от формата строки
+      const ts = parseAckTime(cm.time);
+      if (ts > groups[cm.id].lastTs) groups[cm.id].lastTs = ts;
+    });
+
     // Считаем сколько должно ознакомиться (сотрудники департаментов НПА)
     const nonAdminUsers = Object.entries(USERS).filter(([,u]) => u.role !== 'admin');
 
     // Сортируем группы — последнее ознакомление сверху
     const sortedGroups = Object.entries(groups)
-      .sort((a, b) => parseAckTime(b[1].lastTime) - parseAckTime(a[1].lastTime));
+      .sort((a, b) => b[1].lastTs - a[1].lastTs);
 
     container.innerHTML = sortedGroups.map(([id, g]) => {
       const depts = (g.change?.departments || []).filter(d => d !== 'Все');

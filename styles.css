@@ -3251,3 +3251,108 @@ body {
 
 [data-theme="light"] .ack-group { background: #fff; }
 [data-theme="light"] .ack-row   { background: var(--bg-3); }
+
+/* =====================================================================
+   MOBILE IMPROVEMENTS — улучшения адаптации
+   ===================================================================== */
+
+@media (max-width: 900px) {
+
+  /* ── Шапка ── */
+  .page-title { font-size: 15px; letter-spacing: 0.04em; }
+  .page-subtitle { display: none; }
+  .top-bar-right { gap: 6px; }
+
+  /* ── Статы на дашборде ── */
+  .dashboard-grid { grid-template-columns: repeat(2, 1fr); }
+  .stat-number { font-size: 28px; }
+
+  /* ── Актуальные к исполнению ── */
+  .urgent-item-rich { flex-direction: column; gap: 6px; padding: 10px 12px; }
+  .urgent-item-left { flex-direction: row; align-items: center; gap: 8px; min-width: unset; }
+  .urgent-item-body { width: 100%; }
+  .urgent-text { font-size: 13px; white-space: normal; }
+
+  /* ── Дайджест — вертикальный layout внутри группы ── */
+  .digest-group .digest-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+    padding: 10px 12px;
+  }
+  .digest-group .digest-cat { min-width: unset; }
+  .digest-group .digest-title { font-size: 13px; }
+
+  /* ── Вкладки комментариев ── */
+  .comments-tab { padding: 8px 12px; font-size: 12px; }
+  .comments-tab i { display: none; }
+
+  /* ── Карточки в модале ── */
+  .modal-actions { flex-wrap: wrap; gap: 6px; }
+  .modal-actions .btn-primary,
+  .modal-actions .btn-secondary { flex: 1; min-width: 120px; text-align: center; }
+
+  /* ── Кнопка сброса фильтров ── */
+  .filter-reset-wrap { padding: 0 8px 4px; }
+
+  /* ── Примечания к карточкам ── */
+  .card-filter-note { font-size: 10px; }
+
+  /* ── Ознакомления — таблица ── */
+  .ack-time { display: none; }
+
+  /* ── Форма в два столбца → один ── */
+  .form-row { grid-template-columns: 1fr !important; }
+}
+
+@media (max-width: 480px) {
+
+  /* ── Совсем узкий экран ── */
+  .dashboard-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .stat-card { padding: 12px 10px; }
+  .stat-number { font-size: 24px; }
+  .stat-label { font-size: 10px; }
+
+  /* ── Карточка НПА ── */
+  .change-card { padding: 10px 12px; }
+  .change-title { font-size: 13px; }
+
+  /* ── Бейджи мельче ── */
+  .badge { font-size: 9px; padding: 1px 5px; }
+
+  /* ── Кнопка меню крупнее ── */
+  .menu-toggle { font-size: 20px; padding: 4px 8px; }
+
+  /* ── Модал — ещё компактнее ── */
+  .modal { padding: 16px 12px; }
+  .modal-title { font-size: 15px; }
+  .modal-field label { font-size: 10px; }
+  .modal-field span { font-size: 12px; }
+
+  /* ── Комментарий — компактнее ── */
+  .comment-author { font-size: 12px; }
+  .comment-time { font-size: 10px; }
+  .comment-text { font-size: 12px; }
+
+  /* ── Вкладки комментариев ── */
+  .comments-tab { padding: 8px 10px; font-size: 11px; gap: 4px; }
+  .comments-tab-count { display: none; }
+
+  /* ── Ознакомления ── */
+  .ack-dept-badge { display: none; }
+  .ack-avatar { width: 22px; height: 22px; font-size: 8px; }
+
+  /* ── Deadline badges ── */
+  .deadline-badge { font-size: 9px; padding: 1px 5px; }
+
+  /* ── Календарь ── */
+  .cal-grid { grid-template-columns: 1fr !important; }
+  .cal-legend { display: none; }
+
+  /* ── Кнопки действий ── */
+  .cmt-action-btn { padding: 4px 8px; font-size: 11px; }
+
+  /* ── Навигация в сайдбаре ── */
+  .nav-item { font-size: 13px; padding: 8px 10px; }
+  .dept-btn { font-size: 9px; padding: 2px 6px; }
+}

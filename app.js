@@ -750,7 +750,7 @@ function changeCard(c, isDraft) {
         ${acked         ? `<span class="badge badge-ack">✓ Ознакомлен</span>`       : ''}
       </div>
     </div>
-    <div class="change-summary">${c.summary}</div>
+    <div class="change-summary">${(c.summary||''). replace(/\n/g,'<br>')}</div>
     <div class="change-bottom">
       ${depts}
       ${!isDraft && c.effectiveDate ? `<span class="change-date">Вступает: ${formatDate(c.effectiveDate)}</span>` : ''}
@@ -794,7 +794,7 @@ function openChange(id) {
     </div>
     <div class="modal-section">
       <div class="modal-section-label">Суть изменения</div>
-      <div class="modal-section-text">${c.summary.replace(/\\n/g,'<br>')}</div>
+      <div class="modal-section-text">${(c.summary||'').replace(/\n/g,'<br>')}</div>
     </div>
     <div class="modal-grid">
       <div class="modal-field">
@@ -812,17 +812,17 @@ function openChange(id) {
   if (!isDraft && c.sanctions) html += `
     <div class="modal-section">
       <div class="modal-section-label">Штрафные санкции</div>
-      <div class="modal-section-text">${c.sanctions}</div>
+      <div class="modal-section-text">${(c.sanctions||'').replace(/\n/g,'<br>')}</div>
     </div>`;
   if (c.impact) html += `
     <div class="modal-section">
       <div class="modal-section-label">Влияние на компанию</div>
-      <div class="modal-section-text">${c.impact.replace(/\\n/g,'<br>')}</div>
+      <div class="modal-section-text">${(c.impact||'').replace(/\n/g,'<br>')}</div>
     </div>`;
   if (c.mitigation || c.practicalValue) html += `
     <div class="modal-section">
       <div class="modal-section-label">${isDraft ? 'Практическое значение' : 'Митигация риска'}</div>
-      <div class="modal-section-text">${(c.mitigation||c.practicalValue||'').replace(/\\n/g,'<br>')}</div>
+      <div class="modal-section-text">${(c.mitigation||c.practicalValue||'').replace(/\n/g,'<br>')}</div>
     </div>`;
 
   html += `<div class="modal-divider"></div>${renderCommentsSection(id)}`;
@@ -1356,7 +1356,7 @@ function exportWord() {
     <div class="field"><b>Нормативный акт:</b> ${c.normAct||'—'}</div>
     <div class="field"><b>Дата вступления в силу:</b> ${formatDate(c.effectiveDate)}</div>
     <div class="field"><b>Штрафные санкции:</b> ${c.sanctions||'—'}</div>
-    <div class="field"><b>Суть изменения:</b> ${c.summary}</div>
+    <div class="field"><b>Суть изменения:</b> ${(c.summary||''). replace(/\n/g,'<br>')}</div>
     <div class="field"><b>Влияние на компанию:</b> ${c.impact||'—'}</div>
     <div class="field"><b>Митигация риска:</b> ${c.mitigation||'—'}</div>
     <div class="field"><b>Срок адаптации:</b> ${c.deadline||'—'}</div>`;

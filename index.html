@@ -348,9 +348,14 @@
           </div>
         </div>
         <div class="top-bar-right">
-          <div class="search-wrapper">
-            <input type="text" id="search-input" placeholder="Поиск по изменениям…" oninput="filterSearch(this.value)">
+          <div class="search-wrapper" id="search-wrapper-desktop">
             <span class="search-icon">⌕</span>
+            <input type="text" id="search-input" placeholder="Поиск по изменениям…"
+              oninput="filterSearch(this.value)"
+              onfocus="showSearchDropdown()"
+              onkeydown="searchKeydown(event)">
+            <button class="search-clear-btn" id="search-clear-desktop" onclick="clearSearch()" style="display:none" aria-label="Очистить">✕</button>
+            <div class="search-dropdown" id="search-dropdown-desktop"></div>
           </div>
           <!-- Tour button -->
           <button class="tour-btn" id="tour-btn" onclick="startTour()" title="Обучающий тур">?</button>
@@ -398,8 +403,15 @@
       </header>
 
       <!-- MOBILE SEARCH -->
-      <div class="mobile-search">
-        <input type="text" placeholder="Поиск по изменениям…" oninput="filterSearch(this.value)">
+      <div class="mobile-search" id="search-wrapper-mobile">
+        <span class="search-icon" style="position:absolute;left:20px;top:50%;transform:translateY(-50%);font-size:15px;color:var(--text-3);pointer-events:none">⌕</span>
+        <input type="text" id="search-input-mobile" placeholder="Поиск по изменениям…"
+          style="padding-left:36px;padding-right:32px"
+          oninput="filterSearch(this.value)"
+          onfocus="showSearchDropdown()"
+          onkeydown="searchKeydown(event)">
+        <button class="search-clear-btn" id="search-clear-mobile" onclick="clearSearch()" style="display:none;position:absolute;right:20px;top:50%;transform:translateY(-50%)" aria-label="Очистить">✕</button>
+        <div class="search-dropdown" id="search-dropdown-mobile"></div>
       </div>
 
       <!-- DASHBOARD VIEW -->

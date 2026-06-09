@@ -284,6 +284,8 @@ function showApp() {
   setTimeout(initTourButton, 500);
   // Запускаем напоминания о дедлайнах
   initRemindersAfterLogin();
+  // Загружаем уведомления из Firestore
+  loadNotificationsFromFirestore();
   // Инициализируем EmailJS
   initEmailJS();
 }
@@ -443,9 +445,160 @@ function filterCrit(crit) {
 
 function filterSearch(q) {
   searchQuery = q.toLowerCase();
+  // Показываем/скрываем крестик
+  ['desktop','mobile'].forEach(id => {
+    const btn = document.getElementById('search-clear-' + id);
+    if (btn) btn.style.display = q ? 'block' : 'none';
+  });
+  if (q.length >= 2) {
+    renderSearchDropdown(q);
+  } else {
+    hideSearchDropdown();
+  }
+  // Фильтруем списки в фоне (без переключения раздела)
   renderPublished(); renderDraft();
   if (searchComments) renderAllComments();
 }
+
+function renderSearchDropdown(q) {
+  const ql = q.toLowerCase();
+  const all = getAllChanges();
+
+  const match = c =>
+    (c.title||'').toLowerCase().includes(ql) ||
+    (c.summary||'').toLowerCase().includes(ql) ||
+    (c.category||'').toLowerCase().includes(ql) ||
+    (c.normAct||'').toLowerCase().includes(ql);
+
+  const highlight = text => {
+    if (!text) return '—';
+    const idx = text.toLowerCase().indexOf(ql);
+    if (idx < 0) return text.substring(0, 60);
+    const start = Math.max(0, idx - 20);
+    const pre = (start > 0 ? '…' : '') + text.substring(start, idx);
+    const hit = text.substring(idx, idx + ql.length);
+    const post = text.substring(idx + ql.length, idx + ql.length + 40) + (text.length > idx + ql.length + 40 ? '…' : '');
+    return `${pre}<mark>${hit}</mark>${post}`;
+  };
+
+  const pub   = all.filter(c => c.type !== 'draft' && match(c));
+  const draft = all.filter(c => c.type === 'draft'  && match(c));
+  const total = pub.length + draft.length;
+
+  if (!total) {
+    const html = `<div class="sd-empty">Ничего не найдено по запросу «${q}»</div>`;
+    setDropdownContent(html);
+    return;
+  }
+
+  const LIMIT = 4;
+  let html = '';
+
+  if (pub.length) {
+    html += `<div class="sd-section-label">Опубликованные · ${pub.length}</div>`;
+    pub.slice(0, LIMIT).forEach(c => {
+      const cc = critClass(c.criticality || '');
+      const dept = (c.departments||[]).filter(d=>d!=='Все').slice(0,2).join(', ');
+      html += `<div class="sd-item" onclick="selectSearchResult('${c.id}','published')">
+        <span class="sd-dot sd-dot-${cc}"></span>
+        <div class="sd-body">
+          <div class="sd-title">${highlight(c.title)}</div>
+          <div class="sd-meta">${c.category}${dept ? ' · ' + dept : ''}${c.effectiveDate && c.effectiveDate !== '—' ? ' · ' + formatDate(c.effectiveDate) : ''}</div>
+        </div>
+        <span class="sd-badge sd-badge-pub">Опубл.</span>
+      </div>`;
+    });
+    if (pub.length > LIMIT) {
+      html += `<div class="sd-more" onclick="selectSearchAll('published')">Ещё ${pub.length - LIMIT} в Опубликованных →</div>`;
+    }
+  }
+
+  if (draft.length) {
+    html += `<div class="sd-section-label">Проектные · ${draft.length}</div>`;
+    draft.slice(0, LIMIT).forEach(c => {
+      html += `<div class="sd-item" onclick="selectSearchResult('${c.id}','draft')">
+        <span class="sd-dot sd-dot-draft"></span>
+        <div class="sd-body">
+          <div class="sd-title">${highlight(c.title)}</div>
+          <div class="sd-meta">${c.category}</div>
+        </div>
+        <span class="sd-badge sd-badge-draft">Проект</span>
+      </div>`;
+    });
+    if (draft.length > LIMIT) {
+      html += `<div class="sd-more" onclick="selectSearchAll('draft')">Ещё ${draft.length - LIMIT} в Проектных →</div>`;
+    }
+  }
+
+  if (total > 0) {
+    html += `<div class="sd-footer" onclick="selectSearchAll(null)">Показать все ${total} результата →</div>`;
+  }
+
+  setDropdownContent(html);
+}
+
+function setDropdownContent(html) {
+  ['desktop','mobile'].forEach(id => {
+    const el = document.getElementById('search-dropdown-' + id);
+    if (el) { el.innerHTML = html; el.classList.add('open'); }
+  });
+}
+
+function hideSearchDropdown() {
+  ['desktop','mobile'].forEach(id => {
+    const el = document.getElementById('search-dropdown-' + id);
+    if (el) el.classList.remove('open');
+  });
+}
+
+function showSearchDropdown() {
+  const q = searchQuery;
+  if (q && q.length >= 2) renderSearchDropdown(q);
+}
+
+function selectSearchResult(id, view) {
+  hideSearchDropdown();
+  setView(view);
+  setTimeout(() => openChange(id), 50);
+}
+
+function selectSearchAll(view) {
+  hideSearchDropdown();
+  if (view) setView(view);
+  else {
+    // показываем в том разделе где больше результатов
+    const all = getAllChanges();
+    const ql = searchQuery;
+    const pubCount   = all.filter(c => c.type !== 'draft' && ((c.title||'').toLowerCase().includes(ql) || (c.summary||'').toLowerCase().includes(ql))).length;
+    const draftCount = all.filter(c => c.type === 'draft'  && ((c.title||'').toLowerCase().includes(ql) || (c.summary||'').toLowerCase().includes(ql))).length;
+    setView(pubCount >= draftCount ? 'published' : 'draft');
+  }
+}
+
+function clearSearch() {
+  searchQuery = '';
+  ['search-input','search-input-mobile'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  ['search-clear-desktop','search-clear-mobile'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  hideSearchDropdown();
+  renderPublished(); renderDraft();
+}
+
+function searchKeydown(e) {
+  if (e.key === 'Escape') clearSearch();
+}
+
+// Закрываем dropdown при клике вне
+document.addEventListener('click', e => {
+  if (!e.target.closest('#search-wrapper-desktop') && !e.target.closest('#search-wrapper-mobile')) {
+    hideSearchDropdown();
+  }
+});
 
 function toggleSearchComments(el) {
   searchComments = el.checked;
@@ -783,14 +936,16 @@ function openChange(id) {
   const acked   = currentUser && isAcknowledgedByUser(c.id, currentUser);
 
   let html = `
-    <div class="modal-cat">${isDraft ? '⬡ Проектный НПА' : '◉ Опубликованный НПА'} · ${c.category}</div>
-    <div class="modal-title">${c.title}</div>
-    <div class="modal-badges">
-      ${c.criticality ? `<span class="badge badge-${cc}">${c.criticality}</span>`             : ''}
-      ${c.probability ? `<span class="badge badge-prob">Вероятность: ${c.probability}</span>` : ''}
-      ${c.status      ? `<span class="badge badge-status">${c.status}</span>`                 : ''}
-      ${acked         ? `<span class="badge badge-ack">✓ Ознакомлен</span>`                   : ''}
-      ${(c.departments||[]).map(d=>`<span class="badge badge-dept">${d}</span>`).join('')}
+    <div class="modal-header">
+      <div class="modal-cat">${isDraft ? '⬡ Проектный НПА' : '◉ Опубликованный НПА'} · ${c.category}</div>
+      <div class="modal-title">${c.title}</div>
+      <div class="modal-badges">
+        ${c.criticality ? `<span class="badge badge-${cc}">${c.criticality}</span>`             : ''}
+        ${c.probability ? `<span class="badge badge-prob">Вероятность: ${c.probability}</span>` : ''}
+        ${c.status      ? `<span class="badge badge-status">${c.status}</span>`                 : ''}
+        ${acked         ? `<span class="badge badge-ack">✓ Ознакомлен</span>`                   : ''}
+        ${(c.departments||[]).map(d=>`<span class="badge badge-dept">${d}</span>`).join('')}
+      </div>
     </div>
     <div class="modal-section">
       <div class="modal-section-label">Суть изменения</div>
@@ -952,6 +1107,27 @@ async function submitComment(id) {
 
   await saveToCloud();
   showToast(type === 'ack' ? '✓ Ознакомление зафиксировано' : '✓ Комментарий добавлен', 'success');
+
+  // Bell-уведомление + сохранение в Firestore
+  if (type !== 'ack') {
+    const c = getAllChanges().find(x => x.id === id);
+    const author = currentName || currentUser || currentEmail;
+    const typeLabel = type === 'issue' ? '⚠ Вопрос' : '💬 Комментарий';
+    const notifText = text ? (text.length > 60 ? text.substring(0, 60) + '…' : text) : '';
+    const notif = {
+      id:       'cm_' + Date.now(),
+      title:    c ? c.title : id,
+      text:     `${typeLabel} от ${author}${notifText ? ': ' + notifText : ''}`,
+      changeId: id,
+      urgent:   type === 'issue',
+      kind:     'comment',
+      time:     new Date().toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'}),
+      read:     false
+    };
+    const recipients = getNotifRecipients(id, currentEmail);
+    recipients.forEach(email => saveNotificationToFirestore(email, { ...notif }));
+  }
+
   // onSnapshot обновит модал автоматически если Firebase подключён
   if (!CONFIGURED) { openChange(id); updateBadges(); renderDashboard(); renderPublished(); renderDraft(); }
 }
@@ -1056,6 +1232,23 @@ async function submitReply(changeId, idx) {
   });
   await saveToCloud();
   showToast('Ответ добавлен', 'success');
+
+  // Bell-уведомление об ответе + сохранение в Firestore
+  const c2 = getAllChanges().find(x => x.id === changeId);
+  const author2 = currentName || currentUser || currentEmail;
+  const replyNotif = {
+    id:       'reply_' + Date.now(),
+    title:    c2 ? c2.title : changeId,
+    text:     `↩ Ответ от ${author2}${text ? ': ' + (text.length > 50 ? text.substring(0,50)+'…' : text) : ''}`,
+    changeId,
+    urgent:   false,
+    kind:     'comment',
+    time:     new Date().toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'}),
+    read:     false
+  };
+  const replyRecipients = getNotifRecipients(changeId, currentEmail);
+  replyRecipients.forEach(email => saveNotificationToFirestore(email, { ...replyNotif }));
+
   if (CONFIGURED) return;
   openChange(changeId);
 }
@@ -3040,6 +3233,92 @@ function sendBrowserNotification(title, body, changeId) {
 }
 
 // ── Колокольчик внутри приложения ──
+// ============================================================
+// FIRESTORE NOTIFICATIONS
+// ============================================================
+
+// Ключ для хранения уведомлений — email без точек (Firestore не любит точки в id)
+function notifDocId(email) {
+  return email.replace(/[.@]/g, '_');
+}
+
+async function loadNotificationsFromFirestore() {
+  if (!CONFIGURED || !db || !currentEmail) return;
+  try {
+    const snap = await db.collection('notifications').doc(notifDocId(currentEmail))
+      .collection('items').orderBy('createdAt', 'desc').limit(20).get();
+    snap.forEach(doc => {
+      const n = doc.data();
+      // Не дублируем уже существующие
+      if (!bellNotifications.find(x => x.id === doc.id)) {
+        bellNotifications.push({
+          id:       doc.id,
+          title:    n.title || '',
+          text:     n.text  || '',
+          changeId: n.changeId || '',
+          urgent:   n.urgent || false,
+          kind:     n.kind   || 'deadline',
+          time:     n.time   || '',
+          read:     n.read   || false
+        });
+      }
+    });
+    // Сортируем — непрочитанные и новые сверху
+    bellNotifications.sort((a, b) => {
+      if (a.read !== b.read) return a.read ? 1 : -1;
+      return 0;
+    });
+    updateBellBadge();
+    renderBellPanel();
+  } catch(e) {
+    console.warn('Notifications load error:', e);
+  }
+}
+
+async function saveNotificationToFirestore(recipientEmail, notif) {
+  if (!CONFIGURED || !db) return;
+  try {
+    await db.collection('notifications').doc(notifDocId(recipientEmail))
+      .collection('items').doc(notif.id).set({
+        ...notif,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+  } catch(e) {
+    console.warn('Notification save error:', e);
+  }
+}
+
+async function markNotifReadInFirestore(notifId) {
+  if (!CONFIGURED || !db || !currentEmail) return;
+  try {
+    await db.collection('notifications').doc(notifDocId(currentEmail))
+      .collection('items').doc(notifId).update({ read: true });
+  } catch(e) { /* тихо */ }
+}
+
+// Определяем кому отправить уведомление о комментарии
+function getNotifRecipients(changeId, senderEmail) {
+  const c = getAllChanges().find(x => x.id === changeId);
+  const recipients = new Set();
+
+  if (isAdmin()) {
+    // Юрист ответил — уведомляем автора исходного комментария (если есть)
+    const cmts = store.comments[changeId] || [];
+    cmts.forEach(cm => {
+      if (cm.email && cm.email.toLowerCase() !== senderEmail.toLowerCase()) {
+        recipients.add(cm.email.toLowerCase());
+      }
+    });
+  } else {
+    // Пользователь написал — уведомляем всех юристов
+    ADMIN_EMAILS.forEach(e => recipients.add(e.toLowerCase()));
+  }
+
+  // Убираем отправителя
+  recipients.delete(senderEmail.toLowerCase());
+  return [...recipients];
+}
+
 let bellNotifications = [];
 
 function addBellNotifications(reminders) {
@@ -3088,7 +3367,12 @@ function toggleBellPanel() {
     renderBellPanel();
     // Отмечаем все как прочитанные через 2 сек
     setTimeout(() => {
-      bellNotifications.forEach(n => n.read = true);
+      bellNotifications.forEach(n => {
+        if (!n.read) {
+          n.read = true;
+          if (n.kind === 'comment') markNotifReadInFirestore(n.id);
+        }
+      });
       updateBellBadge();
     }, 2000);
   }
@@ -3106,22 +3390,27 @@ function renderBellPanel() {
   if (!bellNotifications.length) {
     list.innerHTML = `<div class="bell-empty">
       <div style="font-size:28px;margin-bottom:8px">🔔</div>
-      <div>Нет новых напоминаний</div>
-      <div style="font-size:11px;margin-top:4px;color:var(--text-3)">Уведомления появятся за 30 и 7 дней до вступления НПА в силу</div>
+      <div>Нет новых уведомлений</div>
+      <div style="font-size:11px;margin-top:4px;color:var(--text-3)">Здесь появятся напоминания о дедлайнах и новых комментариях</div>
     </div>`;
     return;
   }
 
-  list.innerHTML = bellNotifications.map(n => `
+  list.innerHTML = bellNotifications.map(n => {
+    let icon;
+    if (n.kind === 'comment') icon = n.urgent ? '⚠' : '💬';
+    else icon = n.urgent ? '⚡' : '⏱';
+    return `
     <div class="bell-item ${n.read ? '' : 'bell-unread'} ${n.urgent ? 'bell-urgent' : ''}"
          onclick="openChange('${n.changeId}');closeBellPanel()">
-      <div class="bell-item-icon">${n.urgent ? '⚡' : '⏱'}</div>
+      <div class="bell-item-icon">${icon}</div>
       <div class="bell-item-body">
         <div class="bell-item-title">${n.title}</div>
         <div class="bell-item-text">${n.text}</div>
         <div class="bell-item-time">${n.time}</div>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function clearBellNotifications() {

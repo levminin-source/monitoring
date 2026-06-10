@@ -323,6 +323,16 @@
       </div>
 
       <div class="sidebar-divider"></div>
+
+      <div class="sidebar-section-label">Период</div>
+      <div class="date-filters">
+        <button class="date-btn active" onclick="filterDate('all')" data-date="all">Все</button>
+        <button class="date-btn" onclick="filterDate(30)" data-date="30">30 дней</button>
+        <button class="date-btn" onclick="filterDate(90)" data-date="90">90 дней</button>
+        <button class="date-btn" onclick="filterDate(180)" data-date="180">180 дней</button>
+      </div>
+
+      <div class="sidebar-divider"></div>
       <div class="filter-reset-wrap" id="filter-reset-wrap" style="display:none">
         <button class="btn-filter-reset" onclick="resetAllFilters()">
           <span>✕</span> Сбросить фильтры

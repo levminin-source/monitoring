@@ -22,6 +22,7 @@ let currentEmail = '';
 let activeDept   = 'all';
 let activeCrit   = 'all';
 let activeAck    = 'all';   // all | unread | read
+let activeDate   = 'all';   // all | 30 | 90 | 180 (дней от сегодня в обе стороны)
 let searchQuery  = '';
 let searchComments = false; // поиск по комментариям
 
@@ -615,16 +616,26 @@ function filterAck(val) {
   updateResetBtn();
 }
 
+function filterDate(days) {
+  activeDate = days;
+  document.querySelectorAll('.date-btn').forEach(b =>
+    b.classList.toggle('active', String(b.dataset.date) === String(days)));
+  renderPublished(); renderDraft(); renderDashboard();
+  if (currentView === 'calendar') renderCalendar();
+  updateResetBtn();
+}
+
 function resetAllFilters() {
   filterDept('all');
   filterCrit('all');
   filterAck('all');
+  filterDate('all');
 }
 
 function updateResetBtn() {
   const wrap = document.getElementById('filter-reset-wrap');
   if (!wrap) return;
-  const active = activeDept !== 'all' || activeCrit !== 'all' || activeAck !== 'all';
+  const active = activeDept !== 'all' || activeCrit !== 'all' || activeAck !== 'all' || activeDate !== 'all';
   wrap.style.display = active ? '' : 'none';
 }
 
@@ -654,7 +665,18 @@ function applyFilters(changes) {
       }
     }
 
-    return deptOk && critOk && ackOk && searchOk;
+    // Фильтр по дате вступления в силу
+    let dateOk = true;
+    if (activeDate !== 'all') {
+      const days = parseInt(activeDate);
+      const now = new Date();
+      const from = new Date(now); from.setDate(from.getDate() - days);
+      const to   = new Date(now); to.setDate(to.getDate() + days);
+      const d = parseFlexDate(c.effectiveDate) || parseFlexDate(c.plannedDate);
+      dateOk = d ? (d >= from && d <= to) : false;
+    }
+
+    return deptOk && critOk && ackOk && searchOk && dateOk;
   });
 }
 
@@ -3288,7 +3310,7 @@ async function loadNotificationsFromFirestore() {
   if (!CONFIGURED || !db || !currentEmail) return;
   try {
     const snap = await db.collection('notifications').doc(notifDocId(currentEmail))
-      .collection('items').orderBy('createdAt', 'desc').limit(20).get();
+      .collection('items').limit(20).get();
     snap.forEach(doc => {
       const n = doc.data();
       // Не дублируем уже существующие
@@ -3305,9 +3327,10 @@ async function loadNotificationsFromFirestore() {
         });
       }
     });
-    // Сортируем — непрочитанные и новые сверху
+    // Сортируем — сначала по непрочитанным, потом по дате
     bellNotifications.sort((a, b) => {
       if (a.read !== b.read) return a.read ? 1 : -1;
+      if (a.createdAt && b.createdAt) return b.createdAt.localeCompare(a.createdAt);
       return 0;
     });
     updateBellBadge();
@@ -3323,7 +3346,7 @@ async function saveNotificationToFirestore(recipientEmail, notif) {
     await db.collection('notifications').doc(notifDocId(recipientEmail))
       .collection('items').doc(notif.id).set({
         ...notif,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        createdAt: new Date().toISOString()
       });
   } catch(e) {
     console.warn('Notification save error:', e);

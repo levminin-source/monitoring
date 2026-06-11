@@ -675,8 +675,16 @@
           </div>
         </div>
         <div class="form-group">
-          <label>Ответственные департаменты (через запятую)</label>
-          <input name="departments" type="text" placeholder="ДУП, ФЭД, КД">
+          <label>Ответственные департаменты</label>
+          <div class="dept-checkboxes">
+            <label class="dept-check-label"><input type="checkbox" name="dept[]" value="ДУП"><span>ДУП</span></label>
+            <label class="dept-check-label"><input type="checkbox" name="dept[]" value="ФЭД"><span>ФЭД</span></label>
+            <label class="dept-check-label"><input type="checkbox" name="dept[]" value="КД"><span>КД</span></label>
+            <label class="dept-check-label"><input type="checkbox" name="dept[]" value="ДЛ"><span>ДЛ</span></label>
+            <label class="dept-check-label"><input type="checkbox" name="dept[]" value="ОД"><span>ОД</span></label>
+            <label class="dept-check-label"><input type="checkbox" name="dept[]" value="ДЦТ"><span>ДЦТ</span></label>
+            <label class="dept-check-label"><input type="checkbox" name="dept[]" value="Все"><span>Все</span></label>
+          </div>
         </div>
         <div class="form-group" id="draft-fields" style="display:none">
           <label>Вероятность принятия</label>

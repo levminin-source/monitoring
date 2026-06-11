@@ -1449,7 +1449,7 @@ async function submitNewChange(e) {
     impact:        fd.get('impact'),
     mitigation:    fd.get('mitigation'),
     deadline:      fd.get('deadline'),
-    departments:   fd.get('departments').split(',').map(d => d.trim()).filter(Boolean),
+    departments:   fd.getAll('dept[]').filter(Boolean),
     status:        fd.get('status'),
     probability:   fd.get('probability') || null,
     plannedDate:   fd.get('effective_date') || null,
@@ -1914,7 +1914,13 @@ function openEditModal(id) {
         </div>
         <div class="form-group">
           <label>Департаменты (через запятую)</label>
-          <input name="departments" value="${(c.departments||[]).join(', ')}">
+          <div class="dept-checkboxes">
+            ${['ДУП','ФЭД','КД','ДЛ','ОД','ДЦТ','Все'].map(d =>
+              `<label class="dept-check-label"><input type="checkbox" name="dept[]" value="${d}"
+                ${(c.departments||[]).includes(d) ? 'checked' : ''}>
+              <span>${d}</span></label>`
+            ).join('')}
+          </div>
         </div>
       </div>
       ${isDraft ? `<div class="form-group"><label>Вероятность принятия</label>
@@ -1944,7 +1950,7 @@ async function saveEdit(e, id) {
     impact:        fd.get('impact'),
     mitigation:    fd.get('mitigation'),
     deadline:      fd.get('deadline'),
-    departments:   fd.get('departments').split(',').map(d => d.trim()).filter(Boolean),
+    departments:   fd.getAll('dept[]').filter(Boolean),
     probability:   fd.get('probability') || null,
     urgent:        fd.get('urgent') === 'on',
   };
@@ -2067,7 +2073,13 @@ function promoteToPublished(id) {
         </div>
         <div class="form-group">
           <label>Департаменты (через запятую)</label>
-          <input name="departments" value="${(c.departments||[]).join(', ')}">
+          <div class="dept-checkboxes">
+            ${['ДУП','ФЭД','КД','ДЛ','ОД','ДЦТ','Все'].map(d =>
+              `<label class="dept-check-label"><input type="checkbox" name="dept[]" value="${d}"
+                ${(c.departments||[]).includes(d) ? 'checked' : ''}>
+              <span>${d}</span></label>`
+            ).join('')}
+          </div>
         </div>
       </div>
       <div class="form-actions">

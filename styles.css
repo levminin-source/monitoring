@@ -3593,3 +3593,47 @@ body {
 [data-theme="light"] .date-btn { color: var(--text-2); }
 [data-theme="light"] .date-btn:hover,
 [data-theme="light"] .date-btn.active { background: var(--bg-3); color: var(--text); }
+
+/* ── Чекбоксы департаментов в формах ── */
+.dept-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+.dept-check-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  user-select: none;
+}
+.dept-check-label input[type="checkbox"] {
+  display: none;
+}
+.dept-check-label:has(input:checked) {
+  background: rgba(200,16,46,0.15);
+  border-color: rgba(200,16,46,0.4);
+  color: #fff;
+}
+.dept-check-label:hover {
+  border-color: var(--border-hover);
+  color: var(--text);
+}
+[data-theme="light"] .dept-check-label {
+  background: var(--bg-3);
+  color: var(--text-2);
+}
+[data-theme="light"] .dept-check-label:has(input:checked) {
+  background: rgba(200,16,46,0.1);
+  border-color: rgba(200,16,46,0.35);
+  color: var(--accent);
+}

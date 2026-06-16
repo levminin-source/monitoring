@@ -1492,143 +1492,359 @@ function exportExcel() {
   }
 }
 
+
+// Вспомогательная функция — получить настройки экспорта
+function getExportSettings() {
+  const dept     = document.getElementById('export-dept')?.value || 'all';
+  const incPub   = document.getElementById('export-inc-pub')?.checked !== false;
+  const incDraft = document.getElementById('export-inc-draft')?.checked !== false;
+  const incComm  = document.getElementById('export-inc-comments')?.checked !== false;
+
+  const all = getAllChanges();
+  const filterByDept = c => dept === 'all' ||
+    (c.departments||[]).some(d => d === dept || d === 'Все');
+
+  return {
+    dept, incPub, incDraft, incComm,
+    pub:   incPub   ? all.filter(c => c.type !== 'draft' && filterByDept(c)) : [],
+    draft: incDraft ? all.filter(c => c.type === 'draft'  && filterByDept(c)) : [],
+    deptLabel: dept === 'all' ? 'Все департаменты' : dept
+  };
+}
+
 function _doExportExcel() {
+  const { pub, draft, incComm, dept, deptLabel } = getExportSettings();
   const wb = XLSX.utils.book_new();
+  const deptSuffix = dept === 'all' ? '' : ` · ${dept}`;
+  const dateStr = new Date().toLocaleDateString('ru-RU');
+
+  // Цвета критичности для ячеек
+  const critFill = {
+    'Высокая':    'FFFFE8E8',
+    'Средняя':    'FFFFF3E0',
+    'Низкая':     'FFE8F5E9',
+    'Отсутствует':'FFE3F2FD'
+  };
+  const critFont = {
+    'Высокая':    'FFC8102E',
+    'Средняя':    'FF8D5B00',
+    'Низкая':     'FF2E7D32',
+    'Отсутствует':'FF1565C0'
+  };
+
+  function styleSheet(ws, rows, critColIdx) {
+    // Стилизуем заголовок
+    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+    for (let C = range.s.c; C <= range.e.c; C++) {
+      const addr = XLSX.utils.encode_cell({r:0, c:C});
+      if (!ws[addr]) continue;
+      ws[addr].s = {
+        font: { bold: true, color: { rgb: 'FFFFFFFF' } },
+        fill: { fgColor: { rgb: 'FF0D1E34' } },
+        alignment: { wrapText: true, vertical: 'center' }
+      };
+    }
+    // Стилизуем строки данных
+    for (let R = 1; R <= range.e.r; R++) {
+      const critCell = ws[XLSX.utils.encode_cell({r:R, c:critColIdx})];
+      const crit = critCell ? critCell.v : '';
+      const fill = critFill[crit] || 'FFFAFAFA';
+      const fcolor = critFont[crit] || 'FF0D1E34';
+      for (let C = range.s.c; C <= range.e.c; C++) {
+        const addr = XLSX.utils.encode_cell({r:R, c:C});
+        if (!ws[addr]) continue;
+        ws[addr].s = {
+          fill: { fgColor: { rgb: fill } },
+          alignment: { wrapText: true, vertical: 'top' },
+          font: C === critColIdx ? { bold: true, color: { rgb: fcolor } } : {}
+        };
+      }
+    }
+  }
+
+  // Лист 0 — Сводка
+  const summaryRows = [
+    ['MARSHALL COMPLIANCE MONITOR'],
+    [`Отчёт сформирован: ${dateStr}   |   Департамент: ${deptLabel}`],
+    [''],
+    ['СВОДКА', ''],
+    ['Всего НПА в системе', getAllChanges().length],
+    ['Опубликованных в отчёте', pub.length],
+    ['Проектных в отчёте', draft.length],
+    [''],
+    ['КРИТИЧНОСТЬ', 'Опубликованные', 'Проектные'],
+    ...['Высокая','Средняя','Низкая','Отсутствует'].map(crit => [
+      crit,
+      pub.filter(c => c.criticality === crit).length,
+      draft.filter(c => c.criticality === crit).length
+    ]),
+    [''],
+    ['САМЫЕ СРОЧНЫЕ (ближайшие 90 дней)', ''],
+  ];
+  const now = new Date();
+  pub
+    .filter(c => {
+      const d = new Date(c.effectiveDate);
+      return !isNaN(d) && d >= now && (d - now) / 86400000 <= 90;
+    })
+    .sort((a,b) => new Date(a.effectiveDate) - new Date(b.effectiveDate))
+    .slice(0, 5)
+    .forEach(c => summaryRows.push([
+      c.title, formatDate(c.effectiveDate), c.criticality||'—'
+    ]));
+
+  const ws0 = XLSX.utils.aoa_to_sheet(summaryRows);
+  ws0['!cols'] = [40, 20, 14].map(w => ({wch: w}));
+  ws0['A1'] && (ws0['A1'].s = { font: { bold: true, sz: 16, color: { rgb: 'FFC8102E' } } });
+  XLSX.utils.book_append_sheet(wb, ws0, 'Сводка');
 
   // Лист 1 — Опубликованные
-  const pub = getAllChanges().filter(c => !c.type || c.type === 'published');
-  const pubRows = [
-    ['Категория','Суть изменения','Нормативный акт','Дата вступления',
-     'Штрафные санкции','Критичность','Влияние на компанию','Митигация риска',
-     'Срок адаптации','Департамент','Статус']
-  ];
-  pub.forEach(c => pubRows.push([
-    c.category, c.summary, c.normAct||'—',
-    formatDate(c.effectiveDate), c.sanctions||'—', c.criticality||'—',
-    c.impact||'—', c.mitigation||'—', c.deadline||'—',
-    (c.departments||[]).join(', '), c.status||'—'
-  ]));
-  const ws1 = XLSX.utils.aoa_to_sheet(pubRows);
-  ws1['!cols'] = [4,22,55,35,14,28,12,38,35,16,14,16].map(w=>({wch:w}));
-  XLSX.utils.book_append_sheet(wb, ws1, `Опубликованные · ${QUARTER}`);
+  if (pub.length > 0) {
+    const pubRows = [
+      ['Заголовок','Категория','Критичность','Нормативный акт','Дата вступления',
+       'Срок адаптации','Суть изменения','Влияние на компанию','Митигация риска',
+       'Штрафные санкции','Департаменты','Статус','Источник']
+    ];
+    pub.forEach(c => pubRows.push([
+      c.title||'—', c.category||'—', c.criticality||'—', c.normAct||'—',
+      formatDate(c.effectiveDate), c.deadline||'—',
+      c.summary||'—', c.impact||'—', c.mitigation||'—',
+      c.sanctions||'—', (c.departments||[]).join(', '), c.status||'—',
+      c.sourceUrl||'—'
+    ]));
+    const ws1 = XLSX.utils.aoa_to_sheet(pubRows);
+    ws1['!cols'] = [32,14,12,26,14,14,40,35,35,20,14,14,30].map(w=>({wch:w}));
+    styleSheet(ws1, pubRows, 2); // критичность в колонке 2
+    XLSX.utils.book_append_sheet(wb, ws1, `Опубликованные${deptSuffix}`);
+  }
 
   // Лист 2 — Проектные
-  const dft = getAllChanges().filter(c => c.type === 'draft');
-  const dftRows = [
-    ['Категория','Суть изменения','Нормативный акт','Дата обсуждения',
-     'Вероятность','Дата вступления (план.)','Практическое значение','Департамент','Комментарии']
-  ];
-  dft.forEach(c => dftRows.push([
-    c.category, c.summary, c.normAct||'—', c.discussionDate||'—',
-    c.probability||'—', c.plannedDate||'—',
-    c.practicalValue||c.mitigation||'—',
-    (c.departments||[]).join(', '), c.comments||'—'
-  ]));
-  const ws2 = XLSX.utils.aoa_to_sheet(dftRows);
-  ws2['!cols'] = [22,55,35,22,12,22,40,14,30].map(w=>({wch:w}));
-  XLSX.utils.book_append_sheet(wb, ws2, 'II. ПРОЕКТНЫЕ');
-
-  // Лист 3 — Комментарии
-  const cmtRows = [['НПА','Автор','Email','Тип','Комментарий','Дата']];
-  Object.entries(store.comments).forEach(([id, cmts]) => {
-    const c = getAllChanges().find(x=>x.id===id);
-    cmts.forEach(cm => cmtRows.push([
-      c ? c.title : id, cm.author, cm.email||'—',
-      cm.type==='ack'?'Ознакомлен':cm.type==='issue'?'Вопрос':'Комментарий',
-      cm.text||'', cm.time
+  if (draft.length > 0) {
+    const dftRows = [
+      ['Заголовок','Категория','Критичность','Нормативный акт',
+       'Вероятность','Плановая дата','Суть изменения','Влияние / Что сделать','Департаменты']
+    ];
+    draft.forEach(c => dftRows.push([
+      c.title||'—', c.category||'—', c.criticality||'—', c.normAct||'—',
+      c.probability||'—', c.plannedDate||'—', c.summary||'—',
+      c.mitigation||c.practicalValue||'—',
+      (c.departments||[]).join(', ')
     ]));
-  });
-  const ws3 = XLSX.utils.aoa_to_sheet(cmtRows);
-  ws3['!cols'] = [40,12,24,14,40,18].map(w=>({wch:w}));
-  XLSX.utils.book_append_sheet(wb, ws3, 'Комментарии');
+    const ws2 = XLSX.utils.aoa_to_sheet(dftRows);
+    ws2['!cols'] = [32,14,12,26,12,14,40,40,14].map(w=>({wch:w}));
+    styleSheet(ws2, dftRows, 2);
+    XLSX.utils.book_append_sheet(wb, ws2, `Проектные${deptSuffix}`);
+  }
 
-  XLSX.writeFile(wb, `Compliance_${QUARTER.replace(' ','_')}.xlsx`);
-  showToast('Excel скачан', 'success');
+  // Листы по департаментам (если выбраны Все)
+  if (dept === 'all' && pub.length > 0) {
+    const depts = [...new Set(pub.flatMap(c => c.departments||[]).filter(d => d !== 'Все'))];
+    depts.forEach(d => {
+      const dPub = pub.filter(c => (c.departments||[]).some(x => x === d || x === 'Все'));
+      if (!dPub.length) return;
+      const rows = [['Заголовок','Критичность','Дата вступления','Суть изменения','Статус']];
+      dPub.forEach(c => rows.push([
+        c.title||'—', c.criticality||'—',
+        formatDate(c.effectiveDate), c.summary||'—', c.status||'—'
+      ]));
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      ws['!cols'] = [32,12,14,50,14].map(w=>({wch:w}));
+      styleSheet(ws, rows, 1);
+      XLSX.utils.book_append_sheet(wb, ws, d.substring(0,31));
+    });
+  }
+
+  // Лист Комментарии
+  if (incComm) {
+    const cmtRows = [['НПА','Автор','Тип','Комментарий','Дата']];
+    const filterIds = new Set([...pub, ...draft].map(c => c.id));
+    Object.entries(store.comments).forEach(([id, cmts]) => {
+      if (dept !== 'all' && !filterIds.has(id)) return;
+      const c = getAllChanges().find(x=>x.id===id);
+      cmts.forEach(cm => cmtRows.push([
+        c ? c.title : id, cm.author||'—',
+        cm.type==='ack'?'✓ Ознакомлен':cm.type==='issue'?'⚠ Вопрос':'💬 Комментарий',
+        cm.text||'', cm.time||'—'
+      ]));
+    });
+    if (cmtRows.length > 1) {
+      const ws3 = XLSX.utils.aoa_to_sheet(cmtRows);
+      ws3['!cols'] = [40,16,14,50,18].map(w=>({wch:w}));
+      for (let R = 0; R <= cmtRows.length-1; R++) {
+        const addr0 = XLSX.utils.encode_cell({r:R, c:0});
+        if (ws3[addr0]) ws3[addr0].s = R===0
+          ? { font:{bold:true,color:{rgb:'FFFFFFFF'}}, fill:{fgColor:{rgb:'FF0D1E34'}} }
+          : { alignment:{wrapText:true,vertical:'top'} };
+      }
+      XLSX.utils.book_append_sheet(wb, ws3, 'Комментарии');
+    }
+  }
+
+  if (!wb.SheetNames.length) {
+    showToast('Нет данных для экспорта', 'error');
+    return;
+  }
+
+  const fname = `Marshall_Compliance_${dept === 'all' ? 'Все' : dept}_${dateStr.replace(/[./]/g,'-')}.xlsx`;
+  XLSX.writeFile(wb, fname);
+  showToast(`Excel скачан (${deptLabel})`, 'success');
 }
 
 // ── Word (HTML→.doc trick) ──
 function exportWord() {
   closeExportModal();
-  const pub = getAllChanges().filter(c => !c.type || c.type === 'published');
-  const dft = getAllChanges().filter(c => c.type === 'draft');
+  const { pub, draft: dft, deptLabel, incComm } = getExportSettings();
   const date = new Date().toLocaleDateString('ru-RU');
+
+  const critStyle = {
+    'Высокая':    'color:#C8102E;font-weight:bold',
+    'Средняя':    'color:#B36800;font-weight:bold',
+    'Низкая':     'color:#1A8A4A;font-weight:bold',
+    'Отсутствует':'color:#2E6A9A;font-weight:bold'
+  };
+  const critBg = {
+    'Высокая':    'background:#FFE8E8',
+    'Средняя':    'background:#FFF3E0',
+    'Низкая':     'background:#E8F5EE',
+    'Отсутствует':'background:#E8F0F8'
+  };
 
   let html = `<html xmlns:o="urn:schemas-microsoft-com:office:office"
     xmlns:w="urn:schemas-microsoft-com:office:word"
     xmlns="http://www.w3.org/TR/REC-html40">
   <head><meta charset="utf-8">
   <style>
-    body { font-family: Arial, sans-serif; font-size: 10pt; color: #0D1E34; }
-    h1 { font-size: 20pt; color: #C8102E; text-align: center; }
-    h2 { font-size: 13pt; color: #0D1E34; border-bottom: 2pt solid #C8102E; padding-bottom: 4pt; }
-    h3 { font-size: 11pt; color: #0D1E34; margin-bottom: 4pt; }
-    .meta { background: #F0F4F8; padding: 6pt; margin-bottom: 8pt; font-size: 9pt; }
-    .meta b { color: #C8102E; }
-    .field { margin: 3pt 0 3pt 12pt; font-size: 9pt; }
+    body { font-family: Arial, sans-serif; font-size: 10pt; color: #0D1E34; margin: 0; }
+    h1 { font-size: 18pt; color: #C8102E; text-align: center; margin: 0 0 4pt; }
+    h2 { font-size: 13pt; color: #fff; background: #0D1E34; padding: 5pt 8pt;
+         margin: 16pt 0 8pt; border-left: 4pt solid #C8102E; }
+    h3 { font-size: 11pt; color: #0D1E34; margin: 10pt 0 3pt;
+         border-left: 3pt solid #C8102E; padding-left: 6pt; }
+    .cover { text-align:center; border-bottom: 2pt solid #C8102E;
+             padding-bottom: 10pt; margin-bottom: 12pt; }
+    .subtitle { text-align: center; font-size: 11pt; color: #3D5A78; margin: 2pt 0; }
+    .dept-tag { display:inline-block; background:#0D1E34; color:#fff;
+                font-size:8pt; padding:1pt 6pt; border-radius:2pt; margin:1pt; }
+    .meta { background:#F0F4F8; border-left:3pt solid #C8102E;
+            padding:5pt 8pt; margin:5pt 0 8pt; font-size:9pt; }
+    .field { margin: 3pt 0 3pt 10pt; font-size: 9pt; line-height: 1.5; }
     .field b { color: #C8102E; }
-    .sep { border-top: 1pt solid #C8D8E8; margin: 10pt 0; }
-    .crit-low    { color: #1A8A4A; font-weight: bold; }
-    .crit-med    { color: #B36800; font-weight: bold; }
-    .crit-high   { color: #C8102E; font-weight: bold; }
-    .crit-none   { color: #2E6A9A; font-weight: bold; }
-    .subtitle { text-align: center; font-size: 12pt; color: #3D5A78; }
-    .center { text-align: center; }
-  </style></head><body>
-  <div style="text-align:center;margin-bottom:12pt">
-    <img src="data:image/png;base64,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" style="height:44pt;width:auto">
-  </div>
-  <p class="subtitle"><b>МОНИТОРИНГ ИЗМЕНЕНИЙ ЗАКОНОДАТЕЛЬСТВА</b></p>
-  <p class="subtitle">${QUARTER} &nbsp;·&nbsp; Дата формирования: ${date}</p>
-  <br>
-  <h2>I. Опубликованные нормативно-правовые акты</h2>`;
+    .sep { border: none; border-top: 1pt solid #C8D8E8; margin: 12pt 0; }
+    .source-link { font-size:8pt; color:#C8102E; }
+    .cmt-block { background:#F8F4F0; border-left:2pt solid #C8D8E8;
+                 padding:4pt 8pt; margin:3pt 0 3pt 10pt; font-size:8.5pt; }
+    .cmt-author { font-weight:bold; color:#0D1E34; }
+    /* Сводная таблица */
+    .summary-table { width:100%; border-collapse:collapse; font-size:9pt; margin:8pt 0; }
+    .summary-table th { background:#0D1E34; color:#fff; padding:4pt 6pt;
+                        text-align:left; border:1pt solid #C8D8E8; }
+    .summary-table td { padding:3pt 6pt; border:1pt solid #C8D8E8; vertical-align:top; }
+    .summary-table tr:nth-child(even) td { background:#F8FAFB; }
+  </style></head><body>`;
 
-  pub.forEach(c => {
-    const cc = c.criticality==='Высокая'?'high':c.criticality==='Средняя'?'med':c.criticality==='Низкая'?'low':'none';
-    html += `<h3>${c.title}</h3>
-    <div class="meta">
-      <b>Категория:</b> ${c.category} &nbsp;|&nbsp;
-      <b>Критичность:</b> <span class="crit-${cc}">${c.criticality||'—'}</span> &nbsp;|&nbsp;
-      <b>Департамент:</b> ${(c.departments||[]).join(', ')} &nbsp;|&nbsp;
-      <b>Статус:</b> ${c.status||'—'}
-    </div>
-    <div class="field"><b>Нормативный акт:</b> ${c.normAct||'—'}</div>
-    <div class="field"><b>Дата вступления в силу:</b> ${formatDate(c.effectiveDate)}</div>
-    <div class="field"><b>Штрафные санкции:</b> ${c.sanctions||'—'}</div>
-    <div class="field"><b>Суть изменения:</b> ${(c.summary||''). replace(/\n/g,'<br>')}</div>
-    <div class="field"><b>Влияние на компанию:</b> ${c.impact||'—'}</div>
-    <div class="field"><b>Митигация риска:</b> ${c.mitigation||'—'}</div>
-    <div class="field"><b>Срок адаптации:</b> ${c.deadline||'—'}</div>`;
-    const cmts = getComments(c.id);
-    if (cmts.length) {
-      html += `<div class="field"><b>Комментарии (${cmts.length}):</b></div>`;
-      cmts.forEach(cm => html += `<div class="field" style="margin-left:24pt">
-        [${cm.author}${cm.email?' / '+cm.email:''}] ${cm.time}: ${cm.text||'(Ознакомлен)'}</div>`);
-    }
-    html += `<div class="sep"></div>`;
-  });
+  // Обложка
+  html += `<div class="cover">
+    <h1>MARSHALL COMPLIANCE MONITOR</h1>
+    <p class="subtitle"><b>Мониторинг изменений законодательства</b></p>
+    <p class="subtitle">Департамент: <b>${deptLabel}</b> &nbsp;·&nbsp; Дата формирования: <b>${date}</b></p>
+  </div>`;
 
-  html += `<br><h2>II. Проектные нормативно-правовые акты</h2>`;
-  dft.forEach(c => {
-    html += `<h3>${c.title}</h3>
-    <div class="meta">
-      <b>Категория:</b> ${c.category} &nbsp;|&nbsp;
-      <b>Вероятность:</b> ${c.probability||'—'} &nbsp;|&nbsp;
-      <b>Департамент:</b> ${(c.departments||[]).join(', ')}
-    </div>
-    <div class="field"><b>Нормативный акт:</b> ${c.normAct||'—'}</div>
-    <div class="field"><b>Стадия:</b> ${c.discussionDate||'—'}</div>
-    <div class="field"><b>Плановая дата:</b> ${c.plannedDate||'—'}</div>
-    <div class="field"><b>Суть изменения:</b> ${c.summary}</div>
-    <div class="field"><b>Практическое значение:</b> ${c.practicalValue||c.mitigation||'—'}</div>
-    <div class="sep"></div>`;
-  });
+  // Сводная таблица
+  const critList = ['Высокая','Средняя','Низкая','Отсутствует'];
+  html += `<h2>Сводка</h2>
+  <table class="summary-table">
+    <tr><th>Показатель</th><th>Опубликованные</th><th>Проектные</th><th>Итого</th></tr>
+    <tr><td><b>Всего НПА</b></td><td>${pub.length}</td><td>${dft.length}</td><td>${pub.length+dft.length}</td></tr>
+    ${critList.map(crit => {
+      const p = pub.filter(c=>c.criticality===crit).length;
+      const d = dft.filter(c=>c.criticality===crit).length;
+      return `<tr><td style="${critStyle[crit]||''}">${crit} критичность</td><td>${p}</td><td>${d}</td><td>${p+d}</td></tr>`;
+    }).join('')}
+  </table>`;
+
+  // Ближайшие НПА (90 дней)
+  const now = new Date();
+  const urgent90 = pub.filter(c => {
+    const d = new Date(c.effectiveDate);
+    return !isNaN(d) && d >= now && (d-now)/86400000 <= 90;
+  }).sort((a,b)=>new Date(a.effectiveDate)-new Date(b.effectiveDate));
+
+  if (urgent90.length) {
+    html += `<h2>Ближайшие (следующие 90 дней)</h2>
+    <table class="summary-table">
+      <tr><th>Заголовок</th><th>Дата вступления</th><th>Критичность</th><th>Департаменты</th></tr>
+      ${urgent90.map(c=>`<tr>
+        <td>${c.title}</td>
+        <td>${formatDate(c.effectiveDate)}</td>
+        <td style="${critStyle[c.criticality]||''}">${c.criticality||'—'}</td>
+        <td>${(c.departments||[]).join(', ')}</td>
+      </tr>`).join('')}
+    </table>`;
+  }
+
+  // I. Опубликованные
+  if (pub.length) {
+    html += `<h2>I. Опубликованные нормативно-правовые акты</h2>`;
+    pub.forEach((c,i) => {
+      const cs = critStyle[c.criticality] || '';
+      const cb = critBg[c.criticality] || '';
+      const depts = (c.departments||[]).map(d=>`<span class="dept-tag">${d}</span>`).join(' ');
+      html += `<h3>${i+1}. ${c.title}</h3>
+      <div class="meta">
+        <b>Категория:</b> ${c.category||'—'} &nbsp;|&nbsp;
+        <b>Критичность:</b> <span style="${cs}">${c.criticality||'—'}</span> &nbsp;|&nbsp;
+        <b>Статус:</b> ${c.status||'—'}
+        <br>${depts}
+      </div>
+      <div class="field"><b>Нормативный акт:</b> ${c.normAct||'—'}${c.sourceUrl ? ` &nbsp;<a href="${c.sourceUrl}" class="source-link">↗ источник</a>` : ''}</div>
+      <div class="field"><b>Дата вступления в силу:</b> ${formatDate(c.effectiveDate)}</div>
+      <div class="field"><b>Срок адаптации:</b> ${c.deadline||'—'}</div>
+      <div class="field"><b>Суть изменения:</b><br>${(c.summary||'—').replace(/\n/g,'<br>')}</div>
+      ${c.impact ? `<div class="field"><b>Влияние на компанию:</b><br>${c.impact.replace(/\n/g,'<br>')}</div>` : ''}
+      ${c.mitigation ? `<div class="field"><b>Что нужно сделать:</b><br>${c.mitigation.replace(/\n/g,'<br>')}</div>` : ''}
+      ${c.sanctions ? `<div class="field"><b>Штрафные санкции:</b> ${c.sanctions}</div>` : ''}`;
+      if (incComm) {
+        const cmts = getComments(c.id).filter(cm => cm.type !== 'ack');
+        if (cmts.length) {
+          html += `<div class="field"><b>Комментарии и вопросы (${cmts.length}):</b></div>`;
+          cmts.forEach(cm => html += `<div class="cmt-block">
+            <span class="cmt-author">${cm.author||'—'}</span> &nbsp;·&nbsp; ${cm.time||''}
+            ${cm.type==='issue' ? ' &nbsp;⚠ <i>Вопрос</i>' : ''}
+            ${cm.text ? `<br>${cm.text}` : ''}
+          </div>`);
+        }
+      }
+      html += `<div class="sep"></div>`;
+    });
+  }
+
+  // II. Проектные
+  if (dft.length) {
+    html += `<h2>II. Проектные нормативно-правовые акты</h2>`;
+    dft.forEach((c,i) => {
+      const cs = critStyle[c.criticality] || '';
+      const depts = (c.departments||[]).map(d=>`<span class="dept-tag">${d}</span>`).join(' ');
+      html += `<h3>${i+1}. ${c.title}</h3>
+      <div class="meta">
+        <b>Категория:</b> ${c.category||'—'} &nbsp;|&nbsp;
+        <b>Критичность:</b> <span style="${cs}">${c.criticality||'—'}</span> &nbsp;|&nbsp;
+        <b>Вероятность принятия:</b> ${c.probability||'—'}
+        <br>${depts}
+      </div>
+      <div class="field"><b>Нормативный акт:</b> ${c.normAct||'—'}${c.sourceUrl ? ` &nbsp;<a href="${c.sourceUrl}" class="source-link">↗ источник</a>` : ''}</div>
+      <div class="field"><b>Плановая дата:</b> ${c.plannedDate||'—'}</div>
+      <div class="field"><b>Суть изменения:</b><br>${(c.summary||'—').replace(/\n/g,'<br>')}</div>
+      ${c.mitigation||c.practicalValue ? `<div class="field"><b>Что нужно сделать:</b><br>${(c.mitigation||c.practicalValue||'').replace(/\n/g,'<br>')}</div>` : ''}
+      <div class="sep"></div>`;
+    });
+  }
 
   html += `</body></html>`;
   const blob = new Blob([html], {type:'application/msword'});
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href = url;
-  a.download = `Compliance_${QUARTER.replace(' ','_')}.doc`;
+  a.download = `Marshall_Compliance_${deptLabel.replace(' ','_')}_${date.replace(/\./g,'-')}.doc`;
   a.click();
   URL.revokeObjectURL(url);
   showToast('Word-документ скачан', 'success');
@@ -1637,9 +1853,9 @@ function exportWord() {
 // ── PDF ──
 function exportPDF() {
   closeExportModal();
+  const { pub, draft: dft, deptLabel, incComm } = getExportSettings();
   const printWin = window.open('', '_blank', 'width=900,height=700');
-  const pub = getAllChanges().filter(c => !c.type || c.type === 'published');
-  const dft = getAllChanges().filter(c => c.type === 'draft');
+
   const date = new Date().toLocaleDateString('ru-RU');
 
   const crit_style = {
@@ -1693,48 +1909,108 @@ function exportPDF() {
   </div>
   <div class="section-header">I. ОПУБЛИКОВАННЫЕ НОРМАТИВНО-ПРАВОВЫЕ АКТЫ</div>`;
 
-  pub.forEach(c => {
-    const cs = crit_style[c.criticality] || '';
-    const cmts = getComments(c.id);
-    html += `<div class="card">
-      <div class="card-title">
-        ${c.title}
-      </div>
-      <div class="meta-row">
-        <span class="badge" style="${cs}; padding:2pt 7pt; font-size:7.5pt; font-weight:bold">${c.criticality||'—'}</span>
-        ${(c.departments||[]).map(d=>`<span class="badge badge-dept">${d}</span>`).join('')}
-        <span class="badge badge-status">${c.status||'—'}</span>
-      </div>
-      <div class="field"><span class="field-label">Категория: </span>${c.category}</div>
-      <div class="field"><span class="field-label">Нормативный акт: </span>${c.normAct||'—'}</div>
-      <div class="field"><span class="field-label">Дата вступления: </span>${formatDate(c.effectiveDate)}</div>
-      <div class="field"><span class="field-label">Суть: </span>${c.summary}</div>
-      <div class="field"><span class="field-label">Влияние: </span>${c.impact||'—'}</div>
-      <div class="field"><span class="field-label">Митигация: </span>${c.mitigation||'—'}</div>
-      ${cmts.length ? `<div class="comments-block">
-        ${cmts.map(cm=>`<div class="comment-item">
-          [${cm.author}] ${cm.time}: ${cm.text||'Ознакомлен'}</div>`).join('')}
-      </div>` : ''}
-    </div>`;
-  });
+  // Сводная таблица в PDF
+  const pdfCritList = ['Высокая','Средняя','Низкая','Отсутствует'];
+  html += `<div style="margin:0 0 16pt;padding:10pt;background:#F8FAFB;border:1pt solid #C8D8E8;border-radius:4pt">
+    <div style="font-weight:bold;font-size:10pt;color:#0D1E34;margin-bottom:8pt;border-bottom:1pt solid #C8D8E8;padding-bottom:4pt">
+      Сводка · Департамент: ${deptLabel}
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:8.5pt">
+      <tr>
+        <th style="text-align:left;padding:3pt 6pt;background:#0D1E34;color:#fff">Критичность</th>
+        <th style="padding:3pt 6pt;background:#0D1E34;color:#fff;text-align:center">Опубл.</th>
+        <th style="padding:3pt 6pt;background:#0D1E34;color:#fff;text-align:center">Проект.</th>
+        <th style="padding:3pt 6pt;background:#0D1E34;color:#fff;text-align:center">Итого</th>
+      </tr>
+      ${pdfCritList.map(crit => {
+        const p = pub.filter(c=>c.criticality===crit).length;
+        const d = dft.filter(c=>c.criticality===crit).length;
+        const s = crit_style[crit] || '';
+        return `<tr>
+          <td style="padding:3pt 6pt;border-bottom:0.5pt solid #E0E8F0;${s}">${crit}</td>
+          <td style="padding:3pt 6pt;border-bottom:0.5pt solid #E0E8F0;text-align:center">${p}</td>
+          <td style="padding:3pt 6pt;border-bottom:0.5pt solid #E0E8F0;text-align:center">${d}</td>
+          <td style="padding:3pt 6pt;border-bottom:0.5pt solid #E0E8F0;text-align:center;font-weight:bold">${p+d}</td>
+        </tr>`;
+      }).join('')}
+      <tr style="background:#F0F4F8">
+        <td style="padding:3pt 6pt;font-weight:bold">Всего</td>
+        <td style="padding:3pt 6pt;text-align:center;font-weight:bold">${pub.length}</td>
+        <td style="padding:3pt 6pt;text-align:center;font-weight:bold">${dft.length}</td>
+        <td style="padding:3pt 6pt;text-align:center;font-weight:bold">${pub.length+dft.length}</td>
+      </tr>
+    </table>
+  </div>`;
 
-  html += `<div class="section-header">II. ПРОЕКТНЫЕ НОРМАТИВНО-ПРАВОВЫЕ АКТЫ</div>`;
-  dft.forEach(c => {
-    html += `<div class="card" style="border-left-color:#4a7fa5">
-      <div class="card-title">${c.title}</div>
-      <div class="meta-row">
-        <span class="badge" style="background:#E8F0F8;color:#2E6A9A;padding:2pt 7pt;font-size:7.5pt;font-weight:bold">
-          ${c.probability||'—'}</span>
-        ${(c.departments||[]).map(d=>`<span class="badge badge-dept">${d}</span>`).join('')}
-      </div>
-      <div class="field"><span class="field-label">Категория: </span>${c.category}</div>
-      <div class="field"><span class="field-label">Нормативный акт: </span>${c.normAct||'—'}</div>
-      <div class="field"><span class="field-label">Стадия: </span>${c.discussionDate||'—'}</div>
-      <div class="field"><span class="field-label">Плановая дата: </span>${c.plannedDate||'—'}</div>
-      <div class="field"><span class="field-label">Суть: </span>${c.summary}</div>
-      <div class="field"><span class="field-label">Практическое значение: </span>${c.practicalValue||c.mitigation||'—'}</div>
+  // Ближайшие НПА
+  const pdfNow = new Date();
+  const pdf90 = pub.filter(c => {
+    const d = new Date(c.effectiveDate);
+    return !isNaN(d) && d >= pdfNow && (d-pdfNow)/86400000 <= 90;
+  }).sort((a,b)=>new Date(a.effectiveDate)-new Date(b.effectiveDate));
+  if (pdf90.length) {
+    html += `<div style="margin-bottom:16pt">
+      <div style="font-weight:bold;font-size:9pt;color:#C8102E;margin-bottom:6pt">⚡ БЛИЖАЙШИЕ (следующие 90 дней)</div>
+      ${pdf90.map(c=>`<div style="display:flex;gap:8pt;padding:4pt 6pt;border-left:2pt solid #C8102E;margin-bottom:4pt;background:#FFF8F8;font-size:8.5pt">
+        <span style="min-width:70pt;color:#C8102E;font-weight:bold">${formatDate(c.effectiveDate)}</span>
+        <span style="flex:1">${c.title}</span>
+        <span style="${crit_style[c.criticality]||''};font-weight:bold">${c.criticality||'—'}</span>
+      </div>`).join('')}
     </div>`;
-  });
+  }
+
+  if (pub.length) {
+    html += `<div class="section-header">I. ОПУБЛИКОВАННЫЕ НОРМАТИВНО-ПРАВОВЫЕ АКТЫ</div>`;
+    pub.forEach((c, i) => {
+      const cs = crit_style[c.criticality] || '';
+      const cmts = incComm ? getComments(c.id).filter(cm => cm.type !== 'ack') : [];
+      html += `<div class="card">
+        <div class="card-title">${i+1}. ${c.title}</div>
+        <div class="meta-row">
+          <span class="badge" style="${cs};padding:2pt 7pt;font-size:7.5pt;font-weight:bold">${c.criticality||'—'}</span>
+          ${(c.departments||[]).map(d=>`<span class="badge badge-dept">${d}</span>`).join('')}
+          <span class="badge badge-status">${c.status||'—'}</span>
+        </div>
+        <div class="field"><span class="field-label">Категория: </span>${c.category||'—'}</div>
+        <div class="field"><span class="field-label">Нормативный акт: </span>${c.normAct||'—'}${c.sourceUrl ? ` <a href="${c.sourceUrl}" style="color:#C8102E;font-size:7.5pt">↗</a>` : ''}</div>
+        <div class="field"><span class="field-label">Дата вступления: </span>${formatDate(c.effectiveDate)}</div>
+        ${c.deadline ? `<div class="field"><span class="field-label">Срок адаптации: </span>${c.deadline}</div>` : ''}
+        <div class="field"><span class="field-label">Суть: </span>${(c.summary||'—').replace(/
+/g,'<br>')}</div>
+        ${c.impact ? `<div class="field"><span class="field-label">Влияние: </span>${c.impact.replace(/
+/g,'<br>')}</div>` : ''}
+        ${c.mitigation ? `<div class="field"><span class="field-label">Что сделать: </span>${c.mitigation.replace(/
+/g,'<br>')}</div>` : ''}
+        ${c.sanctions ? `<div class="field"><span class="field-label">Санкции: </span>${c.sanctions}</div>` : ''}
+        ${cmts.length ? `<div class="comments-block">
+          ${cmts.map(cm=>`<div class="comment-item">
+            <b>${cm.author||'—'}</b> · ${cm.time||''}${cm.type==='issue'?' ⚠ Вопрос':''}
+            ${cm.text ? `<br>${cm.text}` : ''}</div>`).join('')}
+        </div>` : ''}
+      </div>`;
+    });
+  }
+
+  if (dft.length) {
+    html += `<div class="section-header">II. ПРОЕКТНЫЕ НОРМАТИВНО-ПРАВОВЫЕ АКТЫ</div>`;
+    dft.forEach((c, i) => {
+      html += `<div class="card" style="border-left-color:#4a7fa5">
+        <div class="card-title">${i+1}. ${c.title}</div>
+        <div class="meta-row">
+          <span class="badge" style="background:#E8F0F8;color:#2E6A9A;padding:2pt 7pt;font-size:7.5pt;font-weight:bold">
+            Вероятность: ${c.probability||'—'}</span>
+          ${(c.departments||[]).map(d=>`<span class="badge badge-dept">${d}</span>`).join('')}
+        </div>
+        <div class="field"><span class="field-label">Категория: </span>${c.category||'—'}</div>
+        <div class="field"><span class="field-label">Нормативный акт: </span>${c.normAct||'—'}${c.sourceUrl ? ` <a href="${c.sourceUrl}" style="color:#C8102E;font-size:7.5pt">↗</a>` : ''}</div>
+        <div class="field"><span class="field-label">Плановая дата: </span>${c.plannedDate||'—'}</div>
+        <div class="field"><span class="field-label">Суть: </span>${(c.summary||'—').replace(/
+/g,'<br>')}</div>
+        ${c.mitigation||c.practicalValue ? `<div class="field"><span class="field-label">Что сделать: </span>${(c.mitigation||c.practicalValue||'').replace(/
+/g,'<br>')}</div>` : ''}
+      </div>`;
+    });
+  }
 
   html += `</body></html>`;
   printWin.document.write(html);

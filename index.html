@@ -716,16 +716,48 @@
 
   <!-- EXPORT MODAL -->
   <div class="modal-overlay" id="export-modal-overlay" onclick="closeExportModal()">
-    <div class="modal" style="max-width:420px" onclick="event.stopPropagation()">
+    <div class="modal" style="max-width:460px" onclick="event.stopPropagation()">
       <button class="modal-close" onclick="closeExportModal()">×</button>
       <div class="modal-cat">Экспорт отчёта</div>
-      <div class="modal-title" style="margin-bottom:20px">Выберите формат</div>
+      <div class="modal-title" style="margin-bottom:16px">Настройки экспорта</div>
+
+      <div class="form-group" style="margin-bottom:16px">
+        <label style="font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-3)">Департамент</label>
+        <select id="export-dept" style="width:100%;margin-top:6px">
+          <option value="all">Все департаменты</option>
+          <option value="ДУП">ДУП</option>
+          <option value="ФЭД">ФЭД</option>
+          <option value="КД">КД</option>
+          <option value="ДЛ">ДЛ</option>
+          <option value="ОД">ОД</option>
+          <option value="ДЦТ">ДЦТ</option>
+        </select>
+      </div>
+
+      <div class="form-group" style="margin-bottom:20px">
+        <label style="font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-3)">Включить в отчёт</label>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+            <input type="checkbox" id="export-inc-pub" checked style="accent-color:#C8102E">
+            Опубликованные НПА
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+            <input type="checkbox" id="export-inc-draft" checked style="accent-color:#C8102E">
+            Проектные НПА
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+            <input type="checkbox" id="export-inc-comments" checked style="accent-color:#C8102E">
+            Комментарии и ознакомления
+          </label>
+        </div>
+      </div>
+
       <div style="display:flex;flex-direction:column;gap:10px">
         <button class="export-fmt-btn" onclick="exportExcel()">
           <span class="export-fmt-icon">⊞</span>
           <div>
             <div class="export-fmt-title">Microsoft Excel (.xlsx)</div>
-            <div class="export-fmt-sub">Три листа: Опубликованные, Проектные, Комментарии</div>
+            <div class="export-fmt-sub">Таблица с заголовками, фильтрами и форматированием</div>
           </div>
         </button>
         <button class="export-fmt-btn" onclick="exportWord()">

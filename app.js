@@ -1975,12 +1975,9 @@ function exportPDF() {
         <div class="field"><span class="field-label">Нормативный акт: </span>${c.normAct||'—'}${c.sourceUrl ? ` <a href="${c.sourceUrl}" style="color:#C8102E;font-size:7.5pt">↗</a>` : ''}</div>
         <div class="field"><span class="field-label">Дата вступления: </span>${formatDate(c.effectiveDate)}</div>
         ${c.deadline ? `<div class="field"><span class="field-label">Срок адаптации: </span>${c.deadline}</div>` : ''}
-        <div class="field"><span class="field-label">Суть: </span>${(c.summary||'—').replace(/
-/g,'<br>')}</div>
-        ${c.impact ? `<div class="field"><span class="field-label">Влияние: </span>${c.impact.replace(/
-/g,'<br>')}</div>` : ''}
-        ${c.mitigation ? `<div class="field"><span class="field-label">Что сделать: </span>${c.mitigation.replace(/
-/g,'<br>')}</div>` : ''}
+        <div class="field"><span class="field-label">Суть: </span>${(c.summary||'—').replace(/\n/g,'<br>')}</div>
+        ${c.impact ? `<div class="field"><span class="field-label">Влияние: </span>${c.impact.replace(/\n/g,'<br>')}</div>` : ''}
+        ${c.mitigation ? `<div class="field"><span class="field-label">Что сделать: </span>${c.mitigation.replace(/\n/g,'<br>')}</div>` : ''}
         ${c.sanctions ? `<div class="field"><span class="field-label">Санкции: </span>${c.sanctions}</div>` : ''}
         ${cmts.length ? `<div class="comments-block">
           ${cmts.map(cm=>`<div class="comment-item">
@@ -2004,10 +2001,8 @@ function exportPDF() {
         <div class="field"><span class="field-label">Категория: </span>${c.category||'—'}</div>
         <div class="field"><span class="field-label">Нормативный акт: </span>${c.normAct||'—'}${c.sourceUrl ? ` <a href="${c.sourceUrl}" style="color:#C8102E;font-size:7.5pt">↗</a>` : ''}</div>
         <div class="field"><span class="field-label">Плановая дата: </span>${c.plannedDate||'—'}</div>
-        <div class="field"><span class="field-label">Суть: </span>${(c.summary||'—').replace(/
-/g,'<br>')}</div>
-        ${c.mitigation||c.practicalValue ? `<div class="field"><span class="field-label">Что сделать: </span>${(c.mitigation||c.practicalValue||'').replace(/
-/g,'<br>')}</div>` : ''}
+        <div class="field"><span class="field-label">Суть: </span>${(c.summary||'—').replace(/\n/g,'<br>')}</div>
+        ${c.mitigation||c.practicalValue ? `<div class="field"><span class="field-label">Что сделать: </span>${(c.mitigation||c.practicalValue||'').replace(/\n/g,'<br>')}</div>` : ''}
       </div>`;
     });
   }

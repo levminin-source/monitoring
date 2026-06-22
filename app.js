@@ -1136,6 +1136,8 @@ function renderCommentsSection(id) {
 
     const likes = cm.likes || [];
     const likedByMe = currentEmail && likes.map(e=>e.toLowerCase()).includes(currentEmail.toLowerCase());
+    const likeNames = likes.map(e => getUserInfo(e).name || e).join(', ');
+    const likeTitle = likes.length ? `Нравится: ${likeNames}` : 'Нравится';
 
     return `<div class="comment-item type-${cm.type}">
       <div class="comment-meta">
@@ -1143,9 +1145,12 @@ function renderCommentsSection(id) {
         <span class="comment-time">${cm.time}</span>
         <span class="comment-type-badge ${cm.type}">${typeLabel}</span>
         <div class="comment-actions">
-          ${cm.type !== 'ack' ? `<button class="cmt-action-btn cmt-like-btn${likedByMe?' liked':''}" onclick="toggleCommentLike('${id}',${idx})">
-            ${likedByMe ? '♥' : '♡'} ${likes.length || ''}
-          </button>` : ''}
+          ${cm.type !== 'ack' ? `<span class="cmt-like-wrap">
+            <button class="cmt-action-btn cmt-like-btn${likedByMe?' liked':''}" onclick="toggleCommentLike('${id}',${idx})">
+              <span class="cmt-like-icon">${likedByMe ? '👍' : '👍🏻'}</span>${likes.length ? `<span class="cmt-like-count">${likes.length}</span>` : ''}
+            </button>
+            ${likes.length ? `<span class="cmt-like-tooltip">${likeNames}</span>` : ''}
+          </span>` : ''}
           <button class="cmt-action-btn" onclick="toggleReplyForm('${id}',${idx})">↩ Ответить</button>
           ${canEdit ? `<button class="cmt-action-btn" onclick="startEditComment('${id}',${idx})">✎</button>` : ''}
           ${canDel  ? `<button class="cmt-action-btn cmt-delete" onclick="deleteComment('${id}',${idx})">✕</button>` : ''}
@@ -1264,8 +1269,11 @@ async function toggleCommentLike(changeId, idx) {
     cm.likes.push(currentEmail); // поставить лайк
   }
 
+  // Обновляем UI сразу, не дожидаясь сети — saveToCloud летит в фоне.
+  // Если Firestore позже подтянет тот же стейт через onSnapshot — это не страшно,
+  // openChange просто перерисует модал ещё раз с тем же содержимым.
+  openChange(changeId);
   await saveToCloud();
-  if (!CONFIGURED) openChange(changeId);
 }
 
 function deleteComment(changeId, idx) {
@@ -1443,7 +1451,10 @@ function renderAllComments() {
           <span class="comment-author">${cm.author}</span>
           <span class="comment-time">${cm.time}</span>
           <span class="comment-type-badge ${cm.type}">${typeLabel}</span>
-          ${cm.likes && cm.likes.length ? `<span class="all-comment-likes">♥ ${cm.likes.length}</span>` : ''}
+          ${cm.likes && cm.likes.length ? `<span class="all-comment-likes-wrap">
+            <span class="all-comment-likes">👍 ${cm.likes.length}</span>
+            <span class="cmt-like-tooltip">${cm.likes.map(e=>getUserInfo(e).name||e).join(', ')}</span>
+          </span>` : ''}
         </div>
         ${cm.text ? `<div class="comment-text${cm.edited?' comment-text-edited':''}">${cm.text}</div>` : ''}
         ${repliesHtml}

@@ -870,8 +870,51 @@ function renderDashboard() {
 // ============================================================
 // LISTS
 // ============================================================
+// Текущий выбор сортировки для каждого раздела (хранится в памяти сессии)
+let sortOrderPublished = 'date';
+let sortOrderDraft     = 'new';
+
+function setSortOrder(view, value) {
+  if (view === 'published') sortOrderPublished = value;
+  if (view === 'draft')     sortOrderDraft     = value;
+  if (view === 'published') renderPublished();
+  if (view === 'draft')     renderDraft();
+}
+
+// Извлекает timestamp добавления из id (используется как «дата добавления»
+// для записей без явного поля даты — проектные НПА из формы или data.js)
+function tsFromId(c) {
+  const m = /-extra-(\d+)$/.exec(c.id || '') || /^promoted-.*-(\d+)$/.exec(c.id || '');
+  return m ? parseInt(m[1], 10) : 0;
+}
+
+const CRIT_ORDER = { 'Высокая': 0, 'Средняя': 1, 'Низкая': 2, 'Отсутствует': 3 };
+
 function renderPublished() {
-  const changes = applyFilters([...PUBLISHED_CHANGES, ...store.extraChanges.filter(c => c.type === 'published')]);
+  let changes = applyFilters([...PUBLISHED_CHANGES, ...store.extraChanges.filter(c => c.type === 'published')]);
+  changes = changes.slice();
+
+  if (sortOrderPublished === 'crit') {
+    changes.sort((a, b) => (CRIT_ORDER[a.criticality] ?? 9) - (CRIT_ORDER[b.criticality] ?? 9));
+  } else if (sortOrderPublished === 'unread') {
+    changes.sort((a, b) => {
+      const ua = currentUser && !isAcknowledgedByUser(a.id, currentUser) ? 0 : 1;
+      const ub = currentUser && !isAcknowledgedByUser(b.id, currentUser) ? 0 : 1;
+      return ua - ub;
+    });
+  } else {
+    // date (по умолчанию) — по дате вступления в силу, ближайшие/недавние сверху.
+    // НПА без даты или с нераспознанной датой — в конец списка.
+    changes.sort((a, b) => {
+      const da = parseFlexDate(a.effectiveDate);
+      const db = parseFlexDate(b.effectiveDate);
+      if (!da && !db) return 0;
+      if (!da) return 1;
+      if (!db) return -1;
+      return da - db;
+    });
+  }
+
   document.getElementById('badge-published').textContent = changes.length;
   document.getElementById('list-published').innerHTML = changes.length
     ? changes.map(c => changeCard(c, false)).join('')
@@ -883,7 +926,20 @@ function renderDraft() {
   const promotedIds = new Set(store.extraChanges.filter(x => x._promoted).map(x => x._patchFor));
   const extraDrafts = store.extraChanges.filter(c => c.type === 'draft' && !c._promoted && !c._patchFor);
   const baseDrafts  = DRAFT_CHANGES.filter(c => !promotedIds.has(c.id));
-  const changes = applyFilters([...baseDrafts, ...extraDrafts]);
+  let changes = applyFilters([...baseDrafts, ...extraDrafts]);
+  changes = changes.slice();
+
+  if (sortOrderDraft === 'prob') {
+    // Вероятность хранится как текст ("60–70%") — берём первое число для сравнения
+    const probOf = c => parseInt((c.probability||'').match(/\d+/)?.[0] || '0', 10);
+    changes.sort((a, b) => probOf(b) - probOf(a));
+  } else if (sortOrderDraft === 'crit') {
+    changes.sort((a, b) => (CRIT_ORDER[a.criticality] ?? 9) - (CRIT_ORDER[b.criticality] ?? 9));
+  } else {
+    // new (по умолчанию) — недавно добавленные сверху
+    changes.sort((a, b) => tsFromId(b) - tsFromId(a));
+  }
+
   document.getElementById('badge-draft').textContent = changes.length;
   document.getElementById('list-draft').innerHTML = changes.length
     ? changes.map(c => changeCard(c, true)).join('')

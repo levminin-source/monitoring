@@ -492,12 +492,24 @@
           <label class="search-comments-toggle">
             <input type="checkbox" onchange="toggleSearchComments(this)"> Искать в комментариях
           </label>
+          <select class="sort-select" id="sort-published" onchange="setSortOrder('published', this.value)">
+            <option value="date">↓ По дате вступления</option>
+            <option value="crit">↓ По критичности</option>
+            <option value="unread">↓ Сначала непрочитанные</option>
+          </select>
         </div>
         <div class="changes-list" id="list-published"></div>
       </div>
 
       <!-- DRAFT VIEW -->
       <div id="view-draft" class="view">
+        <div class="ack-filter-bar">
+          <select class="sort-select" id="sort-draft" onchange="setSortOrder('draft', this.value)">
+            <option value="new">↓ Недавно добавленные</option>
+            <option value="prob">↓ По вероятности принятия</option>
+            <option value="crit">↓ По критичности</option>
+          </select>
+        </div>
         <div class="changes-list" id="list-draft"></div>
       </div>
 

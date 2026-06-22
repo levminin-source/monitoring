@@ -1600,6 +1600,68 @@ body {
 }
 .cmt-action-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
 .cmt-action-btn.cmt-delete:hover { border-color: var(--high); color: var(--high); background: var(--high-bg); }
+.cmt-like-wrap { position: relative; display: inline-flex; }
+.cmt-action-btn.cmt-like-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  line-height: 1;
+}
+.cmt-like-icon { font-size: 13px; line-height: 1; }
+.cmt-like-count { font-size: 11px; font-weight: 700; font-family: var(--mono); }
+.cmt-action-btn.cmt-like-btn:hover { border-color: var(--high); color: var(--high); background: var(--high-bg); }
+.cmt-action-btn.cmt-like-btn.liked { border-color: var(--high); color: var(--high); background: var(--high-bg); }
+.cmt-action-btn.cmt-like-btn.liked .cmt-like-icon { animation: likePop 0.3s ease; }
+@keyframes likePop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+
+/* Кастомный тултип с именами лайкнувших — в стиле sort-tooltip */
+.cmt-like-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-4);
+  border: 1px solid var(--border-hover);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.5;
+  padding: 7px 11px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  max-width: 240px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s, visibility 0.15s;
+  z-index: 50;
+  pointer-events: none;
+}
+.cmt-like-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--bg-4);
+}
+.cmt-like-wrap:hover .cmt-like-tooltip,
+.all-comment-likes-wrap:hover .cmt-like-tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+[data-theme="light"] .cmt-like-tooltip { background: #fff; border-color: var(--border-hover); box-shadow: 0 6px 20px rgba(13,30,52,0.15); }
+[data-theme="light"] .cmt-like-tooltip::after { border-top-color: #fff; }
+
+@media (max-width: 600px) {
+  .cmt-like-tooltip { white-space: normal; }
+}
 
 .comment-dept {
   font-size: 11px;
@@ -3686,4 +3748,16 @@ body {
   .sort-wrap { margin-left: 0; width: 100%; }
   .sort-select { flex: 1; }
   .sort-label { flex-shrink: 0; }
+}
+
+/* ── Счётчик лайков в общем списке комментариев ── */
+.all-comment-likes-wrap {
+  position: relative;
+  display: inline-flex;
+  margin-left: auto;
+}
+.all-comment-likes {
+  font-size: 11px;
+  color: var(--high);
+  font-weight: 600;
 }

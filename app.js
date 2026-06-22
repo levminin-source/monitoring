@@ -1134,12 +1134,18 @@ function renderCommentsSection(id) {
         ${r.text ? `<div class="comment-text">${r.text}</div>` : ''}
       </div>`).join('');
 
+    const likes = cm.likes || [];
+    const likedByMe = currentEmail && likes.map(e=>e.toLowerCase()).includes(currentEmail.toLowerCase());
+
     return `<div class="comment-item type-${cm.type}">
       <div class="comment-meta">
         <span class="comment-author">${cm.author}</span>
         <span class="comment-time">${cm.time}</span>
         <span class="comment-type-badge ${cm.type}">${typeLabel}</span>
         <div class="comment-actions">
+          ${cm.type !== 'ack' ? `<button class="cmt-action-btn cmt-like-btn${likedByMe?' liked':''}" onclick="toggleCommentLike('${id}',${idx})">
+            ${likedByMe ? '♥' : '♡'} ${likes.length || ''}
+          </button>` : ''}
           <button class="cmt-action-btn" onclick="toggleReplyForm('${id}',${idx})">↩ Ответить</button>
           ${canEdit ? `<button class="cmt-action-btn" onclick="startEditComment('${id}',${idx})">✎</button>` : ''}
           ${canDel  ? `<button class="cmt-action-btn cmt-delete" onclick="deleteComment('${id}',${idx})">✕</button>` : ''}
@@ -1244,6 +1250,23 @@ async function submitComment(id) {
 // ============================================================
 
 let _deleteUndoTimer = null;
+
+async function toggleCommentLike(changeId, idx) {
+  const cm = (store.comments[changeId] || [])[idx];
+  if (!cm || !currentEmail || cm.type === 'ack') return;
+  if (!cm.likes) cm.likes = [];
+
+  const emailLower = currentEmail.toLowerCase();
+  const pos = cm.likes.findIndex(e => e.toLowerCase() === emailLower);
+  if (pos >= 0) {
+    cm.likes.splice(pos, 1); // убрать лайк
+  } else {
+    cm.likes.push(currentEmail); // поставить лайк
+  }
+
+  await saveToCloud();
+  if (!CONFIGURED) openChange(changeId);
+}
 
 function deleteComment(changeId, idx) {
   if (!store.comments[changeId]) return;
@@ -1420,6 +1443,7 @@ function renderAllComments() {
           <span class="comment-author">${cm.author}</span>
           <span class="comment-time">${cm.time}</span>
           <span class="comment-type-badge ${cm.type}">${typeLabel}</span>
+          ${cm.likes && cm.likes.length ? `<span class="all-comment-likes">♥ ${cm.likes.length}</span>` : ''}
         </div>
         ${cm.text ? `<div class="comment-text${cm.edited?' comment-text-edited':''}">${cm.text}</div>` : ''}
         ${repliesHtml}

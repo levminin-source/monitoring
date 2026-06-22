@@ -493,7 +493,7 @@
             <input type="checkbox" onchange="toggleSearchComments(this)"> Искать в комментариях
           </label>
           <span class="sort-wrap">
-            <span class="sort-info">ⓘ<span class="sort-tooltip">Меняет порядок отображения карточек ниже.<br>Не влияет на фильтры выше.</span></span>
+            <span class="sort-label">Сортировка:</span>
             <select class="sort-select" id="sort-published" onchange="setSortOrder('published', this.value)">
               <option value="date">↓ По дате вступления</option>
               <option value="crit">↓ По критичности</option>
@@ -512,7 +512,7 @@
           <button class="ack-filter-btn"         data-ack="unread" onclick="filterAck('unread')">Не ознакомлен</button>
           <button class="ack-filter-btn"         data-ack="read"   onclick="filterAck('read')">Ознакомлен</button>
           <span class="sort-wrap">
-            <span class="sort-info">ⓘ<span class="sort-tooltip">Меняет порядок отображения карточек ниже.</span></span>
+            <span class="sort-label">Сортировка:</span>
             <select class="sort-select" id="sort-draft" onchange="setSortOrder('draft', this.value)">
               <option value="new">↓ Недавно добавленные</option>
               <option value="prob">↓ По вероятности принятия</option>

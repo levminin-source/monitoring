@@ -613,6 +613,7 @@ function filterAck(val) {
     b.classList.toggle('active', b.dataset.ack === val);
   });
   renderPublished();
+  renderDraft();
   updateResetBtn();
 }
 

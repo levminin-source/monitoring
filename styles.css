@@ -3642,9 +3642,21 @@ body {
   color: var(--accent);
 }
 
-/* ── Сортировка списков (select) ── */
-.sort-select {
+/* ── Сортировка списков (select + подсказка) ── */
+.sort-wrap {
   margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.sort-info {
+  font-size: 13px;
+  color: var(--text-3);
+  cursor: help;
+  line-height: 1;
+}
+.sort-info:hover { color: var(--accent); }
+.sort-select {
   padding: 5px 10px;
   border-radius: 4px;
   border: 1px solid var(--border);
@@ -3663,5 +3675,6 @@ body {
 #view-draft .ack-filter-bar { justify-content: flex-end; margin-bottom: 12px; }
 
 @media (max-width: 600px) {
-  .sort-select { margin-left: 0; width: 100%; }
+  .sort-wrap { margin-left: 0; width: 100%; }
+  .sort-select { flex: 1; }
 }

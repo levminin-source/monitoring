@@ -24,7 +24,7 @@ let activeCrit   = 'all';
 let activeAck    = 'all';   // all | unread | read
 let activeDate   = 'all';   // all | 30 | 90 | 180 (дней от сегодня в обе стороны)
 let searchQuery  = '';
-let searchComments = false; // поиск по комментариям
+const searchComments = true; // поиск по комментариям включён всегда
 
 let store = { comments: {}, acknowledgements: {}, extraChanges: [] };
 let db    = null;
@@ -484,7 +484,23 @@ function renderSearchDropdown(q) {
 
   const pub   = all.filter(c => c.type !== 'draft' && match(c));
   const draft = all.filter(c => c.type === 'draft'  && match(c));
-  const total = pub.length + draft.length;
+
+  // Поиск по комментариям — собираем совпадения с привязкой к НПА
+  const cmtMatches = [];
+  Object.entries(store.comments).forEach(([id, cmts]) => {
+    const c = all.find(x => x.id === id);
+    if (!c) return;
+    cmts.forEach(cm => {
+      if (cm.type === 'ack') return; // ознакомления не показываем в поиске
+      const inText   = (cm.text||'').toLowerCase().includes(ql);
+      const inAuthor = (cm.author||'').toLowerCase().includes(ql);
+      if (inText || inAuthor) {
+        cmtMatches.push({ change: c, comment: cm, inText });
+      }
+    });
+  });
+
+  const total = pub.length + draft.length + cmtMatches.length;
 
   if (!total) {
     const html = `<div class="sd-empty">Ничего не найдено по запросу «${q}»</div>`;
@@ -528,6 +544,23 @@ function renderSearchDropdown(q) {
     });
     if (draft.length > LIMIT) {
       html += `<div class="sd-more" onclick="selectSearchAll('draft')">Ещё ${draft.length - LIMIT} в Проектных →</div>`;
+    }
+  }
+
+  if (cmtMatches.length) {
+    html += `<div class="sd-section-label">Комментарии · ${cmtMatches.length}</div>`;
+    cmtMatches.slice(0, LIMIT).forEach(({change, comment, inText}) => {
+      const typeIcon = comment.type === 'issue' ? '⚠' : '💬';
+      html += `<div class="sd-item" onclick="selectSearchResult('${change.id}','${change.type === 'draft' ? 'draft' : 'published'}')">
+        <span class="sd-dot sd-dot-comment">${typeIcon}</span>
+        <div class="sd-body">
+          <div class="sd-title">${inText ? highlight(comment.text) : highlight(comment.author)}</div>
+          <div class="sd-meta">→ ${change.title.substring(0,40)}${change.title.length>40?'…':''}</div>
+        </div>
+      </div>`;
+    });
+    if (cmtMatches.length > LIMIT) {
+      html += `<div class="sd-more" onclick="selectSearchAll('comments')">Ещё ${cmtMatches.length - LIMIT} в Комментариях →</div>`;
     }
   }
 
@@ -600,12 +633,6 @@ document.addEventListener('click', e => {
     hideSearchDropdown();
   }
 });
-
-function toggleSearchComments(el) {
-  searchComments = el.checked;
-  renderPublished(); renderDraft();
-  if (currentView === 'comments') renderAllComments();
-}
 
 function filterAck(val) {
   activeAck = val;

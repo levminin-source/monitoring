@@ -3473,6 +3473,13 @@ body {
 .sd-dot-low    { background: var(--low); }
 .sd-dot-none   { background: var(--none); }
 .sd-dot-draft  { background: var(--accent-2); }
+.sd-dot-comment {
+  background: transparent;
+  width: auto; height: auto;
+  border-radius: 0;
+  font-size: 12px;
+  line-height: 1;
+}
 
 .sd-body { flex: 1; min-width: 0; }
 .sd-title {

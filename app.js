@@ -2227,9 +2227,15 @@ function renderEditor() {
   // ВАЖНО: используем getAllChanges() (а не PUBLISHED_CHANGES/DRAFT_CHANGES напрямую),
   // т.к. там уже реализована корректная фильтрация переведённых записей
   // (флаги _promoted/_patchFor) — см. баг "счётчик Проектных НПА не уменьшается".
+  //
+  // ВАЖНО №2: базовые записи DRAFT_CHANGES из data.js НЕ имеют поля type вообще
+  // (только extraChanges/AI-импорт его выставляют). Поэтому isDraft проверяется
+  // ДВУМЯ способами — как и в editorCard()/openEditModal() — иначе записи из
+  // data.js без явного type попадают в "Опубликованные" по ошибке.
+  const isDraftRecord = c => DRAFT_CHANGES.some(x => x.id === c.id) || c.type === 'draft';
   const allChanges = getAllChanges();
-  const allPub = allChanges.filter(c => c.type !== 'draft');
-  const allDft = allChanges.filter(c => c.type === 'draft');
+  const allPub = allChanges.filter(c => !isDraftRecord(c));
+  const allDft = allChanges.filter(c => isDraftRecord(c));
 
   container.innerHTML = `
     <div class="editor-section">

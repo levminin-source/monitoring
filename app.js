@@ -2188,8 +2188,12 @@ function renderEditor() {
   const container = document.getElementById('editor-list');
   if (!container) return;
 
-  const allPub = [...PUBLISHED_CHANGES, ...store.extraChanges.filter(c => c.type === 'published')];
-  const allDft = [...DRAFT_CHANGES,     ...store.extraChanges.filter(c => c.type === 'draft')];
+  // ВАЖНО: используем getAllChanges() (а не PUBLISHED_CHANGES/DRAFT_CHANGES напрямую),
+  // т.к. там уже реализована корректная фильтрация переведённых записей
+  // (флаги _promoted/_patchFor) — см. баг "счётчик Проектных НПА не уменьшается".
+  const allChanges = getAllChanges();
+  const allPub = allChanges.filter(c => c.type !== 'draft');
+  const allDft = allChanges.filter(c => c.type === 'draft');
 
   container.innerHTML = `
     <div class="editor-section">

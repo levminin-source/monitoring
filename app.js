@@ -2507,7 +2507,7 @@ async function confirmPromote(e, id) {
     impact:        fd.get('impact'),
     mitigation:    fd.get('mitigation'),
     deadline:      fd.get('deadline'),
-    departments:   fd.get('departments').split(',').map(d=>d.trim()).filter(Boolean),
+    departments:   fd.getAll('dept[]').filter(Boolean),
   };
 
   store.extraChanges.push(publishedEntry);

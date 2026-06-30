@@ -518,8 +518,8 @@ function renderSearchDropdown(q) {
     return `${pre}<mark>${hit}</mark>${post}`;
   };
 
-  const pub   = all.filter(c => c.type !== 'draft' && match(c));
-  const draft = all.filter(c => c.type === 'draft'  && match(c));
+  const pub   = all.filter(c => !isDraftRecord(c) && match(c));
+  const draft = all.filter(c => isDraftRecord(c)  && match(c));
 
   // Поиск по комментариям — собираем совпадения с привязкой к НПА
   const cmtMatches = [];
@@ -639,8 +639,8 @@ function selectSearchAll(view) {
     // показываем в том разделе где больше результатов
     const all = getAllChanges();
     const ql = searchQuery;
-    const pubCount   = all.filter(c => c.type !== 'draft' && ((c.title||'').toLowerCase().includes(ql) || (c.summary||'').toLowerCase().includes(ql))).length;
-    const draftCount = all.filter(c => c.type === 'draft'  && ((c.title||'').toLowerCase().includes(ql) || (c.summary||'').toLowerCase().includes(ql))).length;
+    const pubCount   = all.filter(c => !isDraftRecord(c) && ((c.title||'').toLowerCase().includes(ql) || (c.summary||'').toLowerCase().includes(ql))).length;
+    const draftCount = all.filter(c => isDraftRecord(c)  && ((c.title||'').toLowerCase().includes(ql) || (c.summary||'').toLowerCase().includes(ql))).length;
     setView(pubCount >= draftCount ? 'published' : 'draft');
   }
 }
@@ -764,6 +764,16 @@ function getAllChanges() {
   const extras = store.extraChanges.filter(x => !x._patchFor && !x._promoted);
   return [...base, ...extras];
 }
+
+// Канонический способ определить "это проектный НПА?". ВАЖНО: базовые записи
+// DRAFT_CHANGES из data.js не имеют поля type вообще (только extraChanges/
+// AI-импорт его выставляют) — поэтому проверка двойная: принадлежность
+// к DRAFT_CHANGES ИЛИ явный c.type === 'draft'. Раньше это выражение было
+// продублировано по файлу 11 раз; используйте эту функцию для новой логики,
+// чтобы не повторить баг "записи data.js без type попадают в Опубликованные".
+function isDraftRecord(c) {
+  return DRAFT_CHANGES.some(x => x.id === c.id) || c.type === 'draft';
+}
 function critClass(crit) {
   return { 'Высокая':'high','Средняя':'medium','Низкая':'low','Отсутствует':'none' }[crit] || 'low';
 }
@@ -820,7 +830,7 @@ function renderDashboard() {
   // ── Актуальные к исполнению ──
   // Все опубликованные (базовые + добавленные), фильтр: Высокая/Средняя,
   // окно: не старше 30 дней после вступления и все будущие
-  const allPub = getAllChanges().filter(c => c.type !== 'draft');
+  const allPub = getAllChanges().filter(c => !isDraftRecord(c));
   const now = new Date();
   const cutoff = new Date(now); cutoff.setDate(cutoff.getDate() - 30);
 
@@ -877,7 +887,7 @@ function renderDashboard() {
     return `<div class="digest-group">
       <div class="digest-group-label badge badge-${cc}">${crit}</div>
       ${shown.map(c => {
-        const isDraft = c.type === 'draft';
+        const isDraft = isDraftRecord(c);
         return `<div class="digest-card" onclick="openChange('${c.id}')">
           <div class="digest-cat">${isDraft ? '◎ Проектный · ' : ''}${esc(c.category)}</div>
           <div class="digest-title">${esc(c.title)}</div>
@@ -1073,7 +1083,7 @@ function openChange(id) {
   markChangeSeen(id);
   const c = getAllChanges().find(x => x.id === id);
   if (!c) return;
-  const isDraft = DRAFT_CHANGES.some(x => x.id === id) || c.type === 'draft';
+  const isDraft = isDraftRecord(c);
   const cc      = critClass(c.criticality || '');
   const acked   = currentUser && isAcknowledgedByUser(c.id, currentUser);
 
@@ -1661,8 +1671,8 @@ function getExportSettings() {
 
   return {
     dept, incPub, incDraft, incComm,
-    pub:   incPub   ? all.filter(c => c.type !== 'draft' && filterByDept(c)) : [],
-    draft: incDraft ? all.filter(c => c.type === 'draft'  && filterByDept(c)) : [],
+    pub:   incPub   ? all.filter(c => !isDraftRecord(c) && filterByDept(c)) : [],
+    draft: incDraft ? all.filter(c => isDraftRecord(c)  && filterByDept(c)) : [],
     deptLabel: dept === 'all' ? 'Все департаменты' : dept
   };
 }
@@ -2232,7 +2242,6 @@ function renderEditor() {
   // (только extraChanges/AI-импорт его выставляют). Поэтому isDraft проверяется
   // ДВУМЯ способами — как и в editorCard()/openEditModal() — иначе записи из
   // data.js без явного type попадают в "Опубликованные" по ошибке.
-  const isDraftRecord = c => DRAFT_CHANGES.some(x => x.id === c.id) || c.type === 'draft';
   const allChanges = getAllChanges();
   const allPub = allChanges.filter(c => !isDraftRecord(c));
   const allDft = allChanges.filter(c => isDraftRecord(c));
@@ -2255,7 +2264,7 @@ function renderEditor() {
 
 function editorCard(c) {
   const isExtra  = store.extraChanges.some(x => x.id === c.id);
-  const isDraft  = DRAFT_CHANGES.some(x => x.id === c.id) || c.type === 'draft';
+  const isDraft  = isDraftRecord(c);
   const hasPatch = store.extraChanges.some(x => x._patchFor === c.id);
 
   return `<div class="editor-card" id="ecard-${c.id}">
@@ -2280,7 +2289,7 @@ function editorCard(c) {
 function openEditModal(id) {
   const c = getAllChanges().find(x => x.id === id);
   if (!c) return;
-  const isDraft = DRAFT_CHANGES.some(x => x.id === id) || c.type === 'draft';
+  const isDraft = isDraftRecord(c);
 
   document.getElementById('edit-modal-overlay').classList.add('open');
   document.getElementById('edit-modal-content').innerHTML = `
@@ -2594,8 +2603,8 @@ function closeEditModal() {
 function renderAnalytics() {
   if (!isAdmin()) return;
 
-  const pub = getAllChanges().filter(c => !c.type || c.type === 'published');
-  const dft = getAllChanges().filter(c => c.type === 'draft');
+  const pub = getAllChanges().filter(c => !isDraftRecord(c));
+  const dft = getAllChanges().filter(c => isDraftRecord(c));
   const all = getAllChanges();
 
   // ── Статистика ──
@@ -2744,7 +2753,9 @@ function renderAnalytics() {
 function renderRiskMatrix() {
   if (!isAdmin()) return;
 
-  const pub = getAllChanges().filter(c => !c.type || c.type === 'published');
+  // !c.type ложно захватывал и базовые DRAFT_CHANGES (у них тоже нет type) —
+  // используем isDraftRecord() (см. HELPERS), как в renderEditor().
+  const pub = getAllChanges().filter(c => !isDraftRecord(c));
 
   // Вероятность (на основе критичности) × Влияние (на основе критичности)
   const IMPACT = { 'Высокая': 3, 'Средняя': 2, 'Низкая': 1, 'Отсутствует': 0 };
@@ -3550,7 +3561,7 @@ function renderCalendar() {
   const events = []; // { date, title, id, type, criticality }
 
   all.forEach(c => {
-    const isDraft = c.type === 'draft';
+    const isDraft = isDraftRecord(c);
 
     // Ролевой фильтр (кто смотрит)
     const roleOk = isAdmin()
@@ -3682,7 +3693,10 @@ function checkDeadlineReminders() {
   const shownKey = 'compliance_reminders_' + todayKey;
   const shown = JSON.parse(localStorage.getItem(shownKey) || '[]');
 
-  const pub = getAllChanges().filter(c => !c.type || c.type === 'published');
+  // !c.type ложно захватывал и базовые DRAFT_CHANGES — используем isDraftRecord().
+  // На практике безвредно (у проектных нет effectiveDate, их отсеивал бы следующий
+  // фильтр), но исправлено для согласованности с остальным кодом.
+  const pub = getAllChanges().filter(c => !isDraftRecord(c));
   const reminders = [];
 
   pub.forEach(c => {

@@ -14,13 +14,18 @@
   --border-hover:  rgba(255,255,255,0.22);
   --text:   #ffffff;
   --text-2: #c8daf0;
-  --text-3: #7a9abа;
+  --text-3: #7a9aba;
   --shadow: 0 4px 32px rgba(0,0,0,0.5);
 
   /* Marshall Red — неизменный в обеих темах */
   --accent:       #C8102E;
   --accent-light: #e8294a;
   --accent-glow:  rgba(200,16,46,0.15);
+  /* Осветлённый вариант accent специально для ТЕКСТА на тёмном фоне.
+     --accent на --bg-2 даёт контраст 2.31:1 (WCAG требует 4.5:1 для мелкого
+     текста) — браузер тихо рендерит нечитаемо при ярком освещении.
+     --accent-text — тот же оттенок hue, но светлее, проходит AA (≈4.6:1). */
+  --accent-text:  #ff6b87;
 
   /* Secondary */
   --accent-2: #4a7fa5;
@@ -758,7 +763,7 @@ body {
 /* Modal content */
 .modal-cat {
   font-size: 10px;
-  color: var(--accent);
+  color: var(--accent-text);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   margin-bottom: 8px;
@@ -775,7 +780,7 @@ body {
 .modal-section { margin-bottom: 18px; }
 .modal-section-label {
   font-size: 10px;
-  color: var(--accent);
+  color: var(--accent-text);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   margin-bottom: 6px;
@@ -786,7 +791,7 @@ body {
 .modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
 .modal-field label {
   font-size: 10px;
-  color: var(--accent);
+  color: var(--accent-text);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   display: block;
@@ -821,7 +826,7 @@ body {
 .comment-item.type-comment { border-left-color: var(--accent); }
 .comment-item.type-issue   { border-left-color: var(--high); }
 .comment-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-.comment-author { font-size: 12px; font-weight: 700; color: var(--accent); letter-spacing: 0.04em; }
+.comment-author { font-size: 12px; font-weight: 700; color: var(--accent-text); letter-spacing: 0.04em; }
 .comment-time { font-size: 11px; color: var(--text-3); font-family: var(--mono); }
 .comment-type-badge { font-size: 10px; padding: 2px 7px; border-radius: 2px; margin-left: auto; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
 .comment-type-badge.ack     { background: var(--low-bg);    color: var(--low); }
@@ -877,7 +882,7 @@ body {
 .all-comment-item.type-ack     { border-left-color: var(--low); }
 .all-comment-item.type-comment { border-left-color: var(--accent); }
 .all-comment-item.type-issue   { border-left-color: var(--high); }
-.all-comment-link { font-size: 11px; color: var(--accent); margin-bottom: 4px; font-weight: 600; }
+.all-comment-link { font-size: 11px; color: var(--accent-text); margin-bottom: 4px; font-weight: 600; }
 
 /* =====================
    ADMIN FORM
@@ -1287,9 +1292,9 @@ body {
 }
 
 .editor-btn-edit {
-  padding: 5px 12px;
+  padding: 7px 14px;
   background: var(--accent-glow);
-  color: var(--accent);
+  color: var(--accent-text);
   border: 1px solid rgba(200,16,46,0.3);
   border-radius: var(--radius-sm);
   font-family: var(--font);
@@ -1301,7 +1306,7 @@ body {
 .editor-btn-edit:hover { background: var(--accent); color: #fff; }
 
 .editor-btn-delete {
-  padding: 5px 12px;
+  padding: 7px 14px;
   background: var(--high-bg);
   color: var(--high);
   border: 1px solid rgba(232,41,74,0.3);
@@ -1396,7 +1401,7 @@ body {
 .proposal-meta   { font-size: 11px; color: var(--text-3); }
 .proposal-actions { display: flex; gap: 6px; flex-shrink: 0; }
 .proposal-body .field { font-size: 12px; color: var(--text-2); margin: 3px 0; }
-.proposal-body .field-lbl { font-weight: 700; color: var(--accent); }
+.proposal-body .field-lbl { font-weight: 700; color: var(--accent-text); }
 
 /* Light theme proposals */
 [data-theme="light"] .proposal-title { color: var(--text); }
@@ -1971,7 +1976,7 @@ body {
   line-height: 1;
   margin-bottom: 6px;
 }
-.an-kpi-accent .an-kpi-num { color: var(--accent); }
+.an-kpi-accent .an-kpi-num { color: var(--accent-text); }
 .an-kpi-warn   .an-kpi-num { color: var(--medium); }
 .an-kpi-label { font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.06em; }
 
@@ -2106,7 +2111,7 @@ body {
   font-size: 11px;
 }
 .risk-item:hover { background: rgba(0,0,0,0.35); }
-.risk-item-num   { color: var(--accent); font-weight: 800; flex-shrink: 0; }
+.risk-item-num   { color: var(--accent-text); font-weight: 800; flex-shrink: 0; }
 .risk-item-title { color: var(--text-2); line-height: 1.4; }
 .risk-cell-empty { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 20px; color: rgba(255,255,255,0.05); }
 
@@ -2408,7 +2413,7 @@ body {
   gap: 4px;
 }
 .ai-field { font-size: 12px; color: var(--text-2); line-height: 1.5; }
-.ai-field-lbl { font-weight: 700; color: var(--accent); }
+.ai-field-lbl { font-weight: 700; color: var(--accent-text); }
 
 .ai-card-edit {
   padding: 14px;
@@ -2541,7 +2546,7 @@ body {
    PROMOTE BUTTON
    ===================== */
 .editor-btn-promote {
-  padding: 5px 12px;
+  padding: 7px 14px;
   background: rgba(39,174,96,0.1);
   color: var(--low);
   border: 1px solid rgba(39,174,96,0.3);
@@ -2997,7 +3002,7 @@ body {
 .dc-type   { font-size: 10px; font-weight: 600; }
 .dc-type.issue  { color: var(--medium); }
 .dc-type.comment { color: var(--text-3); }
-.dc-npa  { font-size: 11px; color: var(--accent); margin-bottom: 3px; }
+.dc-npa  { font-size: 11px; color: var(--accent-text); margin-bottom: 3px; }
 .dc-text { font-size: 12px; color: var(--text-2); line-height: 1.4;
            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
@@ -3461,9 +3466,10 @@ body {
   .editor-btn-promote {
     flex: 1;
     min-width: 0;
+    min-height: 40px;
     text-align: center;
     font-size: 11px;
-    padding: 6px 8px;
+    padding: 8px 8px;
   }
 
   /* Последняя карточка не обрезается */

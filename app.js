@@ -817,7 +817,7 @@ function renderDashboard() {
   animateStatNumber(document.getElementById('stat-high'),   PUBLISHED_CHANGES.filter(c => c.criticality === 'Высокая').length);
   animateStatNumber(document.getElementById('stat-medium'), PUBLISHED_CHANGES.filter(c => c.criticality === 'Средняя').length);
 
-  const depts = ['ДУП','ФЭД','КД','ДЛ'];
+  const depts = ['ДУП','ФЭД','КД','ОД'];
   let pending = 0;
   if (!isAdmin()) {
     PUBLISHED_CHANGES.forEach(c => {
@@ -1035,7 +1035,8 @@ function changeCard(c, isDraft) {
   const cc    = critClass(c.criticality || '');
   const acked = currentUser && isAcknowledgedByUser(c.id, currentUser);
   const cnt   = commentCount(c.id);
-  const depts = (c.departments || []).map(d => { const cls = ['ДУП','ФЭД','КД','ДЛ','ОД','ДЦТ'].includes(d) ? `badge-dept-${d}` : 'badge-dept'; return `<span class="badge ${cls}">${esc(d)}</span>`; }).join('');
+  // ДЛ → ОД: нормализация для записей, созданных до переименования (Firestore-данные не мигрировались)
+  const depts = (c.departments || []).map(d => { const nd = d === 'ДЛ' ? 'ОД' : d; const cls = ['ДУП','ФЭД','КД','ОД','ДЦТ'].includes(nd) ? `badge-dept-${nd}` : 'badge-dept'; return `<span class="badge ${cls}">${esc(nd)}</span>`; }).join('');
   const urgent = c.urgent ? '<span class="badge-urgent">🔴 СРОЧНО</span>' : '';
   const ddl   = !isDraft ? deadlineIndicator(c.effectiveDate) : '';
 
@@ -2360,7 +2361,7 @@ function openEditModal(id) {
         <div class="form-group">
           <label>Департаменты (через запятую)</label>
           <div class="dept-checkboxes">
-            ${['ДУП','ФЭД','КД','ДЛ','ОД','ДЦТ','Все'].map(d =>
+            ${['ДУП','ФЭД','КД','ОД','ДЦТ','Все'].map(d =>
               `<label class="dept-check-label"><input type="checkbox" name="dept[]" value="${d}"
                 ${(c.departments||[]).includes(d) ? 'checked' : ''}>
               <span>${d}</span></label>`
@@ -2519,9 +2520,9 @@ function promoteToPublished(id) {
         <div class="form-group">
           <label>Департаменты (через запятую)</label>
           <div class="dept-checkboxes">
-            ${['ДУП','ФЭД','КД','ДЛ','ОД','ДЦТ','Все'].map(d =>
+            ${['ДУП','ФЭД','КД','ОД','ДЦТ','Все'].map(d =>
               `<label class="dept-check-label"><input type="checkbox" name="dept[]" value="${d}"
-                ${(c.departments||[]).includes(d) ? 'checked' : ''}>
+                ${(c.departments||[]).map(x => x==='ДЛ'?'ОД':x).includes(d) ? 'checked' : ''}>
               <span>${d}</span></label>`
             ).join('')}
           </div>

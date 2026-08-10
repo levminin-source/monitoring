@@ -79,6 +79,7 @@ const USERS = {
   'bogdanova@marshall.parts':             { name: 'Светлана Богданова',      dept: 'ФЭД',         role: 'user' },
   'anna.mikhaleva@marshall.parts':        { name: 'Анна Михалева',           dept: 'ДМ',          role: 'user' },
   'yurij.kolpakov@marshall.parts':        { name: 'Юрий Колпаков',           dept: 'ДЦТ',         role: 'user' },
+  'ilya.fertikov@marshall.parts':         { name: 'Илья Фертиков',           dept: 'ДЦТ',         role: 'user' },
   'dmitriy.shudrenko@marshall.parts':     { name: 'Дмитрий Шудренко',        dept: 'КД',          role: 'user' },
   'nikita.slepushkin@marshall.parts':     { name: 'Никита Слепушкин',        dept: 'КД',          role: 'user' },
   'mostovykh@marshall.parts':             { name: 'Алексей Мостовых',        dept: 'КД',          role: 'user' },
